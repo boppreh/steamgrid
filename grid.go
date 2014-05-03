@@ -81,31 +81,31 @@ func GetGames(username string) ([]Game, error) {
 }
 
 const imageUrlFormat = `http://cdn.steampowered.com/v/gfx/apps/%v/header.jpg`
-func DownloadImage(gameId string, gridDir string) error {
+func DownloadImage(gameId string, gridDir string) (found bool, err error) {
 	url := fmt.Sprintf(imageUrlFormat, gameId)
 	filename := filepath.Join(gridDir, gameId + ".jpg")
 
 	if _, err := os.Stat(filename); err == nil {
 		// File already exists, skip it.
-		return nil
+		return true, nil
 	}
 
 	response, err := http.Get(url)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	if response.StatusCode == 404 {
 		// Some apps don't have an image and there's nothing we can do.
-		return nil
+		return false, nil
 	} else if response.StatusCode > 400 {
 		// Other errors should be reported, though.
-		return errors.New("Failed to download image " + url + ": " + response.Status)
+		return false, errors.New("Failed to download image " + url + ": " + response.Status)
 	}
 	
 	imageBytes, err := ioutil.ReadAll(response.Body)
 	response.Body.Close()
-	return ioutil.WriteFile(filename, imageBytes, 0666)
+	return true, ioutil.WriteFile(filename, imageBytes, 0666)
 }
 
 func GetSteamInstallation() (path string, err error) {
@@ -149,15 +149,21 @@ func PrintProgress(current int, total int) {
 	fmt.Printf("] (%v/%v)", current, total)
 }
 
+func errorAndExit(err error) {
+	fmt.Println("An unexpected error occurred:")
+	fmt.Println(err)
+	os.Exit(1)
+}
+
 func main() {
 	installationDir, err := GetSteamInstallation()
 	if err != nil {
-		panic(err)
+		errorAndExit(err)
 	}
 
 	users, err := GetUsers(installationDir) 
 	if err != nil {
-		panic(err)
+		errorAndExit(err)
 	}
 
 	for _, user := range users {
@@ -165,22 +171,35 @@ func main() {
 
 		games, err := GetGames(user.Name) 
 		if err != nil {
-			panic(err)
+			errorAndExit(err)
 		}
 
+		notFounds := make([]Game, 0)
 		fmt.Printf("Found %v games. Downloading images...\n\n", len(games))
 		for i, game := range games {
 			PrintProgress(i+1, len(games))
 			gridDir := filepath.Join(user.Dir, "grid")
-			err := DownloadImage(game.Id, gridDir)
+			found, err := DownloadImage(game.Id, gridDir)
 			if err != nil {
-				panic(err)
+				errorAndExit(err)
+			}
+			if !found {
+				notFounds = append(notFounds, game)
 			}
 		}
 		fmt.Print("\n\n\n")
+
+		if len(notFounds) == 0 {
+			fmt.Println("All grid images downloaded!")
+		} else {
+			fmt.Printf("%v images could not be found:\n", len(notFounds))
+			for _, game := range notFounds {
+				fmt.Printf("*%v (steam id %v)\n", game.Name, game.Id)
+			}
+		}
 	}
 
-	fmt.Println("All grid images downloaded!")
+	fmt.Print("\n\n")
 	fmt.Println("You can press enter to close this window.")
 	os.Stdin.Read(make([]byte, 1))
 }
