@@ -155,8 +155,12 @@ func getGoogleImage(gameName string) (string, error) {
 	// Again, we could parse JSON. This may be a little too lazy, the pattern
 	// is very loose. The order could be wrong, for example.
 	pattern := regexp.MustCompile(`"width":"460","height":"215",[^}]+"unescapedUrl":"(.+?)"`)
-	imageUrl := pattern.FindStringSubmatch(string(responseBytes))[1]
-	return imageUrl, nil
+	matches := pattern.FindStringSubmatch(string(responseBytes))
+	if len(matches) >= 1 {
+		return matches[0], nil
+	} else {
+		return "", nil
+	}
 }
 
 // Tries to fetch a URL, returning the response only if it was positive.
@@ -269,7 +273,13 @@ func LoadOverlays(dir string) (overlays map[string]image.Image, err error) {
 	return
 }
 
+// Applies an overlay to the game image, depending on the category. The
+// resulting image is saved over the original.
 func ApplyOverlay(game *Game, overlays map[string]image.Image) (err error) {
+	if game.ImagePath == "" {
+		return nil
+	}
+
 	gameImage, err := loadImage(game.ImagePath)
 	if err != nil {
 		return err
