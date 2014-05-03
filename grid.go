@@ -161,14 +161,14 @@ func main() {
 	}
 
 	for _, user := range users {
-		fmt.Printf("Found user %v. Fetching game list...\n", user.Name)
+		fmt.Printf("Found user %v. Fetching game list...\n\n\n", user.Name)
 
 		games, err := GetGames(user.Name) 
 		if err != nil {
 			panic(err)
 		}
 
-		fmt.Printf("Found %v games. Downloading images...\n", len(games))
+		fmt.Printf("Found %v games. Downloading images...\n\n", len(games))
 		for i, game := range games {
 			PrintProgress(i+1, len(games))
 			gridDir := filepath.Join(user.Dir, "grid")
@@ -177,7 +177,7 @@ func main() {
 				panic(err)
 			}
 		}
-		fmt.Print("\n\n")
+		fmt.Print("\n\n\n")
 	}
 
 	fmt.Println("All grid images downloaded!")
