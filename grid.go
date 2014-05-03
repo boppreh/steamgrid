@@ -170,9 +170,10 @@ func main() {
 				panic(err)
 			}
 		}
-		fmt.Print("\n")
+		fmt.Print("\n\n")
 	}
 
-	fmt.Println("Press enter to close this window.")
+	fmt.Println("All grid images downloaded!")
+	fmt.Println("You can press enter to close this window.")
 	os.Stdin.Read(make([]byte, 1))
 }
