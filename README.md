@@ -1,10 +1,9 @@
 Auto Steam Grid
 ===============
 
+
 The Steam client has a neat grid view for your games, but it requires
 continuous internet access and customization has to be done game by game.
-
-![Steam screenshot with filled grid](http://i.imgur.com/abnqZ6C.png)
 
 Not anymore. This nifty program caches all your game images so you don't need
 internet access, searches for the ones that Steam is missing and it also
@@ -14,6 +13,11 @@ Just extract it anywhere, customize the overlays to your liking (or leave the
 defaults) and run `steamgrid.exe`. It'll automatically detect your Steam
 installation, local users, their games and categories and work all the magic.
 Not a single keypress required.
+
+# [Download here](https://github.com/boppreh/steamgrid/releases/download/v1.0-alpha/steamgrid.zip)
+
+[![Steam screenshot with filled grid](http://i.imgur.com/abnqZ6C.png)](https://github.com/boppreh/steamgrid/releases/download/v1.0-alpha/steamgrid.zip)
+
 
 Features
 --------
