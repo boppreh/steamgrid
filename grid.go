@@ -70,7 +70,7 @@ func GetProfile(username string) (string, error) {
 // A Steam game in a library. May or may not be installed.
 type Game struct {
 	// Official Steam id.
-	Id   string
+	Id string
 	// Warning, may contain Unicode characters.
 	Name string
 	// User created category. May be blank.
@@ -129,7 +129,7 @@ const googleSearchFormat = `https://ajax.googleapis.com/ajax/services/search/ima
 // Returns the first steam grid image URL found by Google search of a given
 // game name.
 func getGoogleImage(gameName string) (string, error) {
-	url := googleSearchFormat + url.QueryEscape("steam grid OR header" + gameName)
+	url := googleSearchFormat + url.QueryEscape("steam grid OR header"+gameName)
 	response, err := http.Get(url)
 	if err != nil {
 		return "", err
@@ -167,6 +167,7 @@ func tryDownload(url string) (*http.Response, error) {
 
 // Primary URL for downloading grid images.
 const akamaiUrlFormat = `https://steamcdn-a.akamaihd.net/steam/apps/%v/header.jpg`
+
 // The subreddit mentions this as primary, but I've found Akamai to contain
 // more images and answer faster.
 const steamCdnUrlFormat = `http://cdn.steampowered.com/v/gfx/apps/%v/header.jpg`
