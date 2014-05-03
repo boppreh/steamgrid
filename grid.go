@@ -96,8 +96,11 @@ func containsSteam(path string) bool {
 func GetSteamInstallation() (path string, err error) {
 	if len(os.Args) == 2 {
 		argDir := os.Args[1]
-		if _, err = os.Stat(argDir); err == nil {
+		_, err := os.Stat(argDir)
+		if err == nil {
 			return argDir, nil
+		} else {
+			return "", errors.New("Argument must be a valid Steam directory, or empty for auto detection. Got: " + argDir)
 		}
 	}
 
