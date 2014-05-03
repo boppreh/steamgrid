@@ -123,7 +123,7 @@ func tryDownload(url string) (*http.Response, error) {
 	return response, nil
 }
 
-func getImageAlternatives(game Game) (response *http.Response, err error) {
+func getImageAlternatives(game Game) (response *http.Response, fromGoogle bool, err error) {
 	response, err = tryDownload(fmt.Sprintf(imageUrlFormat, game.Id))
 	if err == nil && response != nil {
 		return
@@ -131,38 +131,37 @@ func getImageAlternatives(game Game) (response *http.Response, err error) {
 
 	response, err = tryDownload(fmt.Sprintf(alternativeUrlFormat, game.Id))
 	if err == nil && response != nil {
-		fmt.Println("Downloaded from alternative.")
 		return
 	}
 
+	fromGoogle = true
 	url, err := getGoogleImage(game.Name)
 	if err != nil {
 		return
 	}
 	response, err = tryDownload(url)
 	if err == nil && response != nil {
-		fmt.Println("Downloaded from google images.")
 		return
 	}
 
-	return nil, nil
+	return nil, false, nil
 }
 
-func DownloadImage(game Game, gridDir string) (found bool, err error) {
+func DownloadImage(game Game, gridDir string) (found bool, fromGoogle bool, err error) {
 	filename := filepath.Join(gridDir, game.Id+".jpg")
 	if _, err := os.Stat(filename); err == nil {
 		// File already exists, skip it.
-		return true, nil
+		return true, false, nil
 	}
 
-	response, err := getImageAlternatives(game)
+	response, fromGoogle, err := getImageAlternatives(game)
 	if response == nil || err != nil {
-		return false, err
+		return false, false, err
 	}
 
 	imageBytes, err := ioutil.ReadAll(response.Body)
 	response.Body.Close()
-	return true, ioutil.WriteFile(filename, imageBytes, 0666)
+	return true, fromGoogle, ioutil.WriteFile(filename, imageBytes, 0666)
 }
 
 func GetSteamInstallation() (path string, err error) {
@@ -232,26 +231,41 @@ func main() {
 		}
 
 		notFounds := make([]Game, 0)
+		googleFounds := make([]Game, 0)
 		fmt.Printf("Found %v games. Downloading images...\n\n", len(games))
 		for i, game := range games {
 			PrintProgress(i+1, len(games))
 			gridDir := filepath.Join(user.Dir, "grid")
-			found, err := DownloadImage(game, gridDir)
+			found, fromGoogle, err := DownloadImage(game, gridDir)
 			if err != nil {
 				errorAndExit(err)
 			}
 			if !found {
 				notFounds = append(notFounds, game)
 			}
+			if fromGoogle {
+				googleFounds = append(googleFounds, game)
+			}
 		}
 		fmt.Print("\n\n\n")
 
-		if len(notFounds) == 0 {
+		if len(notFounds) == 0 && len(googleFounds) == 0 {
 			fmt.Println("All grid images downloaded!")
 		} else {
-			fmt.Printf("%v images could not be found:\n", len(notFounds))
-			for _, game := range notFounds {
-				fmt.Printf("* %v (steam id %v)\n", game.Name, game.Id)
+			if len(googleFounds) >= 1 {
+				fmt.Printf("%v images were found with a Google search and may not be accurate:.\n", len(googleFounds))
+				for _, game := range googleFounds {
+					fmt.Printf("* %v (steam id %v)\n", game.Name, game.Id)
+				}
+			}
+
+			fmt.Print("\n\n")
+
+			if len(notFounds) >= 1 {
+				fmt.Printf("%v images could not be found:\n", len(notFounds))
+				for _, game := range notFounds {
+					fmt.Printf("* %v (steam id %v)\n", game.Name, game.Id)
+				}
 			}
 		}
 	}
