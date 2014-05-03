@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"regexp"
 	"path/filepath"
 	"io/ioutil"
@@ -87,12 +88,13 @@ func DownloadImage(gameid string, filename string) error {
 }
 
 func main() {
-	installationDir := `C:\Program Files (x86)\Steam\userdata`
+	programFilesDir := os.Getenv("ProgramFiles(x86)")
+	installationDir := filepath.Join(programFilesDir, `Steam\userdata`)
 	for _, user := range GetUsers(installationDir) {
 		fmt.Printf("Found user %v. Fetching game list...\n", user.Name)
-		games := GetGames(user.Name) 
 		continue
 
+		games := GetGames(user.Name) 
 		fmt.Printf("Found %v games. Download images...\n", len(games))
 		for _, game := range games {
 			gridDir := filepath.Join(user.Dir, "grid")
