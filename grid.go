@@ -94,6 +94,14 @@ func DownloadImage(gameId string, gridDir string) error {
 	if err != nil {
 		return err
 	}
+
+	if response.StatusCode == 404 {
+		// Some apps don't have an image and there's nothing we can do.
+		return nil
+	} else if response.StatusCode > 400 {
+		// Other errors should be reported, though.
+		return errors.New("Failed to download image " + url + ": " + response.Status)
+	}
 	
 	imageBytes, err := ioutil.ReadAll(response.Body)
 	response.Body.Close()
