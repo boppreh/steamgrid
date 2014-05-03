@@ -8,17 +8,23 @@ import (
 	"net/http"
 )
 
-func GetUsernames(installationDir string) []string {
+type User struct {
+	Name string
+	Dir string
+}
+
+func GetUsers(installationDir string) []User {
 	files, err := ioutil.ReadDir(installationDir)
 	if err != nil {
 		panic(err)
 	}
 
-	names := make([]string, 0)
+	users := make([]User, 0)
 
 	for _, userDir := range files {
 		userId := userDir.Name()
-		configFile := filepath.Join(installationDir, userId, "config", "localconfig.vdf")
+		userDir := filepath.Join(installationDir, userId, "config")
+		configFile := filepath.Join(userDir, "localconfig.vdf")
 
 		configBytes, err := ioutil.ReadFile(configFile)
 		if err != nil {
@@ -26,23 +32,19 @@ func GetUsernames(installationDir string) []string {
 		}
 		pattern := regexp.MustCompile(`"PersonaName"\s*"(.+?)"`)
 		username := pattern.FindStringSubmatch(string(configBytes))[1]
-		names = append(names, username)
+		users = append(users, User{username, userDir})
 	}
 
-	return names
+	return users
 }
 
 const urlFormat = `http://steamcommunity.com/id/%v/games?tab=all`
 func GetProfile(username string) string {
-	fmt.Println("Processing user", username)
 	response, err := http.Get(fmt.Sprintf(urlFormat, username))
 	if err != nil {
 		panic(err)
 	}
 
-	if response.StatusCode != 200 {
-		panic("Profile not found, server returned " + response.Status)
-	}
 	contentBytes, err := ioutil.ReadAll(response.Body)
 	response.Body.Close()
 	if err != nil {
@@ -71,10 +73,34 @@ func GetGames(username string) []Game {
 	return games
 }
 
+const imageUrlFormat = `http://cdn.steampowered.com/v/gfx/apps/STORE_APP_ID_HERE/header.jpg`
+func DownloadImage(gameid string, filename string) error {
+	response, err := http.Get(imageUrlFormat)	
+	if err != nil {
+		return err
+	}
+	
+	var imageBytes []byte
+	imageBytes, err = ioutil.ReadAll(response.Body)
+	response.Body.Close()
+	return ioutil.WriteFile(filename, imageBytes, 0666)
+}
+
 func main() {
-	for _, username := range GetUsernames(`C:\Program Files (x86)\Steam\userdata`) {
-		for _, game := range GetGames(username) {
+	installationDir := `C:\Program Files (x86)\Steam\userdata`
+	for _, user := range GetUsers(installationDir) {
+		fmt.Printf("Found user %v. Fetching game list...\n", user.Name)
+		games := GetGames(user.Name) 
+		continue
+
+		fmt.Printf("Found %v games. Download images...\n", len(games))
+		for _, game := range games {
+			gridDir := filepath.Join(user.Dir, "grid")
+			err := DownloadImage(game.Id, gridDir)
 			fmt.Println(game.Id, game.Name)
+			if err != nil {
+				panic(err)
+			}
 		}
 	}
 }
