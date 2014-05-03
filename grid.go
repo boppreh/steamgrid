@@ -171,4 +171,7 @@ func main() {
 			}
 		}
 	}
+
+	fmt.Println("Press enter to close this window.")
+	os.Stdin.Read(make([]byte, 1))
 }
