@@ -124,6 +124,23 @@ func GetSteamInstallation() (path string, err error) {
 	return "", errors.New("Could not find Steam installation folder.")
 }
 
+func PrintProgress(current int, total int) {
+	fmt.Print("\r[")
+	printedHead := false
+	for i := 0; i < 40; i++ {
+		part := int(float64(i) * (float64(total) / 40.0))
+		if part < current {
+			fmt.Print("=")
+		} else if !printedHead {
+			printedHead = true
+			fmt.Print(">")
+		} else {
+			fmt.Print(" ")
+		}
+	}
+	fmt.Printf("] (%v/%v)", current, total)
+}
+
 func main() {
 	installationDir, err := GetSteamInstallation()
 	if err != nil {
@@ -144,11 +161,11 @@ func main() {
 			panic(err)
 		}
 
-		fmt.Printf("Found %v games. Download images...\n", len(games))
-		for _, game := range games {
+		fmt.Printf("Found %v games. Downloading images...\n", len(games))
+		for i, game := range games {
+			PrintProgress(i, len(games))
 			gridDir := filepath.Join(user.Dir, "grid")
 			err := DownloadImage(game.Id, gridDir)
-			fmt.Printf("Downloaded image for %v (%v)\n", game.Name, game.Id)
 			if err != nil {
 				panic(err)
 			}
