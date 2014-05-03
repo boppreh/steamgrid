@@ -94,6 +94,13 @@ func containsSteam(path string) bool {
 	return err != nil
 }
 func GetSteamInstallation() (path string, err error) {
+	if len(os.Args) == 2 {
+		argDir := os.Args[1]
+		if _, err = os.Stat(argDir); err == nil {
+			return argDir, nil
+		}
+	}
+
 	programFiles86Dir := filepath.Join(os.Getenv("ProgramFiles(x86)"), "Steam")
 	if _, err = os.Stat(programFiles86Dir); err == nil {
 		return programFiles86Dir, nil
