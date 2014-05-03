@@ -4,6 +4,7 @@ package main
 
 import (
 	"image"
+	"image/draw"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -14,7 +15,7 @@ import (
 	"regexp"
 	"strings"
 
-	_ "image/jpeg"
+	"image/jpeg"
 	_ "image/png"
 )
 
@@ -80,6 +81,8 @@ type Game struct {
 	Name string
 	// User created category. May be blank.
 	Category string
+	// Path for the grid image.
+	ImagePath string
 }
 
 // Pattern of game declarations in the public profile. It's actually JSON
@@ -88,7 +91,7 @@ const profileGamePattern = `\{"appid":\s*(\d+),\s*"name":\s*"(.+?)"`
 
 // Returns all games from a given user, using both the public profile and local
 // files to gather the data. Returns a map of game by ID.
-func GetGames(user User) (map[string]Game, error) {
+func GetGames(user User) (map[string]*Game, error) {
 	profile, err := GetProfile(user.Name)
 	if err != nil {
 		return nil, err
@@ -96,12 +99,13 @@ func GetGames(user User) (map[string]Game, error) {
 
 	// Fetch game list from public profile.
 	pattern := regexp.MustCompile(profileGamePattern)
-	games := make(map[string]Game, 0)
+	games := make(map[string]*Game, 0)
 	for _, groups := range pattern.FindAllStringSubmatch(profile, -1) {
 		gameId := groups[1]
 		gameName := groups[2]
 		category := ""
-		games[gameId] = Game{gameId, gameName, category}
+		imagePath := ""
+		games[gameId] = &Game{gameId, gameName, category, imagePath}
 	}
 
 	// Fetch game categories from local file.
@@ -117,12 +121,12 @@ func GetGames(user User) (map[string]Game, error) {
 
 		game, ok := games[gameId]
 		if ok {
-			games[gameId] = Game{game.Id, game.Name, category}
+			game.Category = category
 		} else {
 			// If for some reason it wasn't included in the profile, create a new
 			// entry for it now. Unfortunately we don't have a name.
 			gameName := ""
-			games[gameId] = Game{gameId, gameName, category}
+			games[gameId] = &Game{gameId, gameName, category, ""}
 		}
 	}
 
@@ -184,7 +188,7 @@ const steamCdnUrlFormat = `http://cdn.steampowered.com/v/gfx/apps/%v/header.jpg`
 // sources. Returns the final response received and a flag indicating if it was
 // fro ma Google search (useful because we want to log the lower quality
 // images).
-func getImageAlternatives(game Game) (response *http.Response, fromSearch bool, err error) {
+func getImageAlternatives(game *Game) (response *http.Response, fromSearch bool, err error) {
 	response, err = tryDownload(fmt.Sprintf(akamaiUrlFormat, game.Id))
 	if err == nil && response != nil {
 		return
@@ -211,7 +215,7 @@ func getImageAlternatives(game Game) (response *http.Response, fromSearch bool, 
 // Downloads the grid image for a game into the user's grid directory. Returns
 // flags indicating if the operation succeeded and if the image downloaded was
 // from a search.
-func DownloadImage(game Game, user User) (found bool, fromSearch bool, err error) {
+func DownloadImage(game *Game, user User) (found bool, fromSearch bool, err error) {
 	gridDir := filepath.Join(user.Dir, "config", "grid")
 	filename := filepath.Join(gridDir, game.Id+".jpg")
 	if _, err := os.Stat(filename); err == nil {
@@ -226,9 +230,22 @@ func DownloadImage(game Game, user User) (found bool, fromSearch bool, err error
 
 	imageBytes, err := ioutil.ReadAll(response.Body)
 	response.Body.Close()
+	game.ImagePath = filename
 	return true, fromSearch, ioutil.WriteFile(filename, imageBytes, 0666)
 }
 
+// Loads an image from a given path.
+func loadImage(path string) (img image.Image, err error) {
+	reader, err := os.Open(path)
+	if err != nil {
+		return
+	}
+	defer reader.Close()
+
+	img, _, err = image.Decode(reader)
+	return
+}
+// Loads the overlays from the given dir, returning a map of name -> image.
 func LoadOverlays(dir string) (overlays map[string]image.Image, err error) {
 
 	files, err := ioutil.ReadDir(dir)
@@ -239,21 +256,41 @@ func LoadOverlays(dir string) (overlays map[string]image.Image, err error) {
 	overlays = make(map[string]image.Image, 0)
 
 	for _, file := range files {
-		reader, err := os.Open(filepath.Join(dir, file.Name()))
+		img, err := loadImage(filepath.Join(dir, file.Name()))
 		if err != nil {
 			return nil, err
 		}
 
-		img, _, err := image.Decode(reader)
-		if err != nil {
-			return nil, err
-		}
-
+		// Normalize overlay name.
 		name := strings.TrimSuffix(file.Name(), filepath.Ext(file.Name()))
 		overlays[strings.ToLower(name)] = img
 	}
 
 	return
+}
+
+func ApplyOverlay(game *Game, overlays map[string]image.Image) (err error) {
+	gameImage, err := loadImage(game.ImagePath)
+	if err != nil {
+		return err
+	}
+
+	// Normalize overlay name.
+	categoryName := strings.ToLower(game.Category)
+
+	overlayImage, ok := overlays[categoryName]
+	if !ok {
+		return
+	}
+
+    result := image.NewRGBA(gameImage.Bounds().Union(overlayImage.Bounds()))
+    draw.Draw(result, result.Bounds(), gameImage, image.ZP, draw.Src)
+    draw.Draw(result, result.Bounds(), overlayImage, image.Point{0,0}, draw.Over)
+
+    resultFile, _ := os.Create(game.ImagePath)
+    defer resultFile.Close()
+
+    return jpeg.Encode(resultFile, result, &jpeg.Options{90})
 }
 
 // Returns the Steam installation directory in Windows. Should work for
@@ -331,8 +368,8 @@ func main() {
 			errorAndExit(err)
 		}
 
-		notFounds := make([]Game, 0)
-		searchFounds := make([]Game, 0)
+		notFounds := make([]*Game, 0)
+		searchFounds := make([]*Game, 0)
 		fmt.Printf("Found %v games. Downloading images...\n\n", len(games))
 
 		i := 0
