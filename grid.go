@@ -3,6 +3,7 @@
 package main
 
 import (
+	"image"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -11,6 +12,10 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
+
+	_ "image/jpeg"
+	_ "image/png"
 )
 
 // User in the local steam installation.
@@ -222,6 +227,33 @@ func DownloadImage(game Game, user User) (found bool, fromSearch bool, err error
 	imageBytes, err := ioutil.ReadAll(response.Body)
 	response.Body.Close()
 	return true, fromSearch, ioutil.WriteFile(filename, imageBytes, 0666)
+}
+
+func LoadOverlays(dir string) (overlays map[string]image.Image, err error) {
+
+	files, err := ioutil.ReadDir(dir)
+	if err != nil {
+		return
+	}
+
+	overlays = make(map[string]image.Image, 0)
+
+	for _, file := range files {
+		reader, err := os.Open(filepath.Join(dir, file.Name()))
+		if err != nil {
+			return nil, err
+		}
+
+		img, _, err := image.Decode(reader)
+		if err != nil {
+			return nil, err
+		}
+
+		name := strings.TrimSuffix(file.Name(), filepath.Ext(file.Name()))
+		overlays[strings.ToLower(name)] = img
+	}
+
+	return
 }
 
 // Returns the Steam installation directory in Windows. Should work for
