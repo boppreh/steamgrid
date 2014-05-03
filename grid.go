@@ -371,6 +371,7 @@ func PrintProgress(current int, total int) {
 func errorAndExit(err error) {
 	fmt.Println("An unexpected error occurred:")
 	fmt.Println(err)
+	os.Stdin.Read(make([]byte, 1))
 	os.Exit(1)
 }
 
