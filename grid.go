@@ -80,9 +80,17 @@ func GetGames(username string) ([]Game, error) {
 	return games, nil
 }
 
-const imageUrlFormat = `http://cdn.steampowered.com/v/gfx/apps/STORE_APP_ID_HERE/header.jpg`
-func DownloadImage(gameid string, filename string) error {
-	response, err := http.Get(imageUrlFormat)	
+const imageUrlFormat = `http://cdn.steampowered.com/v/gfx/apps/%v/header.jpg`
+func DownloadImage(gameId string, gridDir string) error {
+	url := fmt.Sprintf(imageUrlFormat, gameId)
+	filename := filepath.Join(gridDir, filepath.Base(url))
+
+	if _, err := os.Stat(filename); err == nil {
+		// File already exists, skip it.
+		return nil
+	}
+
+	response, err := http.Get(url)
 	if err != nil {
 		return err
 	}
@@ -140,7 +148,7 @@ func main() {
 		for _, game := range games {
 			gridDir := filepath.Join(user.Dir, "grid")
 			err := DownloadImage(game.Id, gridDir)
-			fmt.Println(game.Id, game.Name)
+			fmt.Printf("Downloaded image for %v (%v)\n", game.Name, game.Id)
 			if err != nil {
 				panic(err)
 			}
