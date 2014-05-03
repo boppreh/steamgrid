@@ -299,7 +299,7 @@ func main() {
 		notFounds := make([]Game, 0)
 		searchFounds := make([]Game, 0)
 		fmt.Printf("Found %v games. Downloading images...\n\n", len(games))
-		continue
+
 		for i, game := range games {
 			PrintProgress(i+1, len(games))
 			found, fromSearch, err := DownloadImage(game, user)
