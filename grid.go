@@ -185,7 +185,7 @@ func main() {
 	}
 
 	for _, user := range users {
-		fmt.Printf("Found user %v. Fetching game list...\n\n\n", user.Name)
+		fmt.Printf("Found user %v. Fetching game list from profile...\n\n\n", user.Name)
 
 		games, err := GetGames(user.Name) 
 		if err != nil {
@@ -212,7 +212,7 @@ func main() {
 		} else {
 			fmt.Printf("%v images could not be found:\n", len(notFounds))
 			for _, game := range notFounds {
-				fmt.Printf("*%v (steam id %v)\n", game.Name, game.Id)
+				fmt.Printf("* %v (steam id %v)\n", game.Name, game.Id)
 			}
 		}
 	}
