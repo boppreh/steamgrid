@@ -222,6 +222,8 @@ func getImageAlternatives(game *Game) (response *http.Response, fromSearch bool,
 func DownloadImage(game *Game, user User) (found bool, fromSearch bool, err error) {
 	gridDir := filepath.Join(user.Dir, "config", "grid")
 	filename := filepath.Join(gridDir, game.Id+".jpg")
+
+	game.ImagePath = filename
 	if _, err := os.Stat(filename); err == nil {
 		// File already exists, skip it.
 		return true, false, nil
@@ -234,7 +236,6 @@ func DownloadImage(game *Game, user User) (found bool, fromSearch bool, err erro
 
 	imageBytes, err := ioutil.ReadAll(response.Body)
 	response.Body.Close()
-	game.ImagePath = filename
 	return true, fromSearch, ioutil.WriteFile(filename, imageBytes, 0666)
 }
 
@@ -280,9 +281,9 @@ func ApplyOverlay(game *Game, overlays map[string]image.Image) (err error) {
 		return nil
 	}
 
-	gameImage, err := loadImage(game.ImagePath)
-	if err != nil {
-		return err
+	if _, err := os.Stat(game.ImagePath); err != nil {
+		// Game has no image, we have to skip it.
+		return nil
 	}
 
 	// Normalize overlay name.
@@ -293,13 +294,27 @@ func ApplyOverlay(game *Game, overlays map[string]image.Image) (err error) {
 		return
 	}
 
+	gameImage, err := loadImage(game.ImagePath)
+	if err != nil {
+		return err
+	}
+
     result := image.NewRGBA(gameImage.Bounds().Union(overlayImage.Bounds()))
     draw.Draw(result, result.Bounds(), gameImage, image.ZP, draw.Src)
     draw.Draw(result, result.Bounds(), overlayImage, image.Point{0,0}, draw.Over)
 
+	ext := filepath.Ext(game.ImagePath)
+	backupPath := strings.TrimSuffix(game.ImagePath, ext) + " (original)" + ext
+	if _, err := os.Stat(backupPath); err != nil {
+		// Backup doesn't exist, create it.
+		err = os.Rename(game.ImagePath, backupPath)
+		if err != nil {
+			return err
+		}
+	}
+
     resultFile, _ := os.Create(game.ImagePath)
     defer resultFile.Close()
-
     return jpeg.Encode(resultFile, result, &jpeg.Options{90})
 }
 
@@ -360,6 +375,11 @@ func errorAndExit(err error) {
 }
 
 func main() {
+	overlays, err := LoadOverlays("overlays by category")
+	if err != nil {
+		errorAndExit(err)
+	}
+
 	installationDir, err := GetSteamInstallation()
 	if err != nil {
 		errorAndExit(err)
@@ -392,9 +412,15 @@ func main() {
 			}
 			if !found {
 				notFounds = append(notFounds, game)
+				continue
 			}
 			if fromSearch {
 				searchFounds = append(searchFounds, game)
+			}
+
+			err = ApplyOverlay(game, overlays)
+			if err != nil {
+				errorAndExit(err)
 			}
 		}
 		fmt.Print("\n\n\n")
