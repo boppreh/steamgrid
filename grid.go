@@ -383,6 +383,11 @@ func main() {
 	if err != nil {
 		errorAndExit(err)
 	}
+	if len(overlays) == 0 {
+		fmt.Printf("No category overlays found. You can put overlay images in the folder 'overlays by category', where the filename is the game category.\n\n")
+	} else {
+		fmt.Printf("Loaded %v category overlays.\n\n", len(overlays))
+	}
 
 	installationDir, err := GetSteamInstallation()
 	if err != nil {
@@ -395,7 +400,7 @@ func main() {
 	}
 
 	for _, user := range users {
-		fmt.Printf("Found user %v. Fetching game list from profile...\n\n\n", user.Name)
+		fmt.Printf("Found user %v. Fetching game list from public profile...\n\n\n", user.Name)
 
 		games, err := GetGames(user)
 		if err != nil {
@@ -430,7 +435,7 @@ func main() {
 		fmt.Print("\n\n\n")
 
 		if len(notFounds) == 0 && len(searchFounds) == 0 {
-			fmt.Println("All grid images downloaded!")
+			fmt.Println("All grid images downloaded and overlays applied!")
 		} else {
 			if len(searchFounds) >= 1 {
 				fmt.Printf("%v images were found with a Google search and may not be accurate:.\n", len(searchFounds))
@@ -442,7 +447,7 @@ func main() {
 			fmt.Print("\n\n")
 
 			if len(notFounds) >= 1 {
-				fmt.Printf("%v images could not be found:\n", len(notFounds))
+				fmt.Printf("%v images could not be found anywhere:\n", len(notFounds))
 				for _, game := range notFounds {
 					fmt.Printf("* %v (steam id %v)\n", game.Name, game.Id)
 				}
