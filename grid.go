@@ -27,8 +27,8 @@ func GetUsers(installationDir string) ([]User, error) {
 
 	for _, userDir := range files {
 		userId := userDir.Name()
-		userDir := filepath.Join(userdataDir, userId, "config")
-		configFile := filepath.Join(userDir, "localconfig.vdf")
+		userDir := filepath.Join(userdataDir, userId)
+		configFile := filepath.Join(userDir, "config", "localconfig.vdf")
 
 		configBytes, err := ioutil.ReadFile(configFile)
 		if err != nil {
@@ -62,22 +62,37 @@ func GetProfile(username string) (string, error) {
 type Game struct {
 	Id   string
 	Name string
+	Category string
 }
 
 const gamePattern = `\{"appid":\s*(\d+),\s*"name":\s*"(.+?)"`
 
-func GetGames(username string) ([]Game, error) {
-	pattern := regexp.MustCompile(gamePattern)
-
-	games := make([]Game, 0)
-
-	profile, err := GetProfile(username)
+func GetGames(user User) ([]Game, error) {
+	profile, err := GetProfile(user.Name)
 	if err != nil {
 		return nil, err
 	}
 
+	pattern := regexp.MustCompile(gamePattern)
+	games := make([]Game, 0)
 	for _, groups := range pattern.FindAllStringSubmatch(profile, -1) {
-		games = append(games, Game{groups[1], groups[2]})
+		games = append(games, Game{groups[1], groups[2], ""})
+	}
+
+	sharedConfFile := filepath.Join(user.Dir, "7", "remote", "sharedconfig.vdf")
+	sharedConfBytes, err := ioutil.ReadFile(sharedConfFile)
+
+	sharedConf := string(sharedConfBytes)
+	pattern = regexp.MustCompile(`"([0-9]+)"\s*{[^}]+?"tags"\s*{\s*"0"\s*"([^"]+)"`)
+	for _, groups := range pattern.FindAllStringSubmatch(sharedConf, -1) {
+		gameId := groups[1]
+		category := groups[2]
+		for _, game := range games {
+			if game.Id == gameId {
+				game.Category = category
+				fmt.Println(game.Category, game.Name)
+			}
+		}
 	}
 
 	return games, nil
@@ -225,7 +240,7 @@ func main() {
 	for _, user := range users {
 		fmt.Printf("Found user %v. Fetching game list from profile...\n\n\n", user.Name)
 
-		games, err := GetGames(user.Name)
+		games, err := GetGames(user)
 		if err != nil {
 			errorAndExit(err)
 		}
@@ -233,9 +248,10 @@ func main() {
 		notFounds := make([]Game, 0)
 		googleFounds := make([]Game, 0)
 		fmt.Printf("Found %v games. Downloading images...\n\n", len(games))
+		continue
 		for i, game := range games {
 			PrintProgress(i+1, len(games))
-			gridDir := filepath.Join(user.Dir, "grid")
+			gridDir := filepath.Join(user.Dir, "config", "grid")
 			found, fromGoogle, err := DownloadImage(game, gridDir)
 			if err != nil {
 				errorAndExit(err)
