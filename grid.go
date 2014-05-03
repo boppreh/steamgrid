@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"io/ioutil"
 	"net/http"
+	"errors"
 )
 
 type User struct {
@@ -15,7 +16,8 @@ type User struct {
 }
 
 func GetUsers(installationDir string) []User {
-	files, err := ioutil.ReadDir(installationDir)
+	userdataDir := filepath.Join(installationDir, "userdata")
+	files, err := ioutil.ReadDir(userdataDir)
 	if err != nil {
 		panic(err)
 	}
@@ -24,7 +26,7 @@ func GetUsers(installationDir string) []User {
 
 	for _, userDir := range files {
 		userId := userDir.Name()
-		userDir := filepath.Join(installationDir, userId, "config")
+		userDir := filepath.Join(userdataDir, userId, "config")
 		configFile := filepath.Join(userDir, "localconfig.vdf")
 
 		configBytes, err := ioutil.ReadFile(configFile)
@@ -87,9 +89,30 @@ func DownloadImage(gameid string, filename string) error {
 	return ioutil.WriteFile(filename, imageBytes, 0666)
 }
 
+func containsSteam(path string) bool {
+	_, err := os.Stat(filepath.Join(path, "Steam"))
+	return err != nil
+}
+func GetSteamInstallation() (path string, err error) {
+	programFiles86Dir := filepath.Join(os.Getenv("ProgramFiles(x86)"), "Steam")
+	if _, err = os.Stat(programFiles86Dir); err == nil {
+		return programFiles86Dir, nil
+	}
+
+	programFilesDir := filepath.Join(os.Getenv("ProgramFiles"), "Steam")
+	if _, err = os.Stat(programFilesDir); err == nil {
+		return programFilesDir, nil
+	}
+
+	return "", errors.New("Could not find Steam installation folder.")
+}
+
 func main() {
-	programFilesDir := os.Getenv("ProgramFiles(x86)")
-	installationDir := filepath.Join(programFilesDir, `Steam\userdata`)
+	installationDir, err := GetSteamInstallation()
+	if err != nil {
+		panic(err)
+	}
+
 	for _, user := range GetUsers(installationDir) {
 		fmt.Printf("Found user %v. Fetching game list...\n", user.Name)
 		continue
