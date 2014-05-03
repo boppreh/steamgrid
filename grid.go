@@ -252,13 +252,16 @@ func loadImage(path string) (img image.Image, err error) {
 }
 // Loads the overlays from the given dir, returning a map of name -> image.
 func LoadOverlays(dir string) (overlays map[string]image.Image, err error) {
+	overlays = make(map[string]image.Image, 0)
+
+	if _, err = os.Stat(dir); err != nil {
+		return overlays, nil
+	}
 
 	files, err := ioutil.ReadDir(dir)
 	if err != nil {
 		return
 	}
-
-	overlays = make(map[string]image.Image, 0)
 
 	for _, file := range files {
 		img, err := loadImage(filepath.Join(dir, file.Name()))
