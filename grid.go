@@ -154,7 +154,6 @@ func main() {
 
 	for _, user := range users {
 		fmt.Printf("Found user %v. Fetching game list...\n", user.Name)
-		continue
 
 		games, err := GetGames(user.Name) 
 		if err != nil {
