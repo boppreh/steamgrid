@@ -112,7 +112,6 @@ func GetGames(user User) ([]Game, error) {
 		for _, game := range games {
 			if game.Id == gameId {
 				game.Category = category
-				fmt.Println(game.Category, game.Name)
 				break
 			}
 		}
