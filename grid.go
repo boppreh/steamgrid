@@ -15,11 +15,11 @@ type User struct {
 	Dir string
 }
 
-func GetUsers(installationDir string) []User {
+func GetUsers(installationDir string) ([]User, error) {
 	userdataDir := filepath.Join(installationDir, "userdata")
 	files, err := ioutil.ReadDir(userdataDir)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
 
 	users := make([]User, 0)
@@ -31,30 +31,30 @@ func GetUsers(installationDir string) []User {
 
 		configBytes, err := ioutil.ReadFile(configFile)
 		if err != nil {
-			panic(err)
+			return nil, err
 		}
 		pattern := regexp.MustCompile(`"PersonaName"\s*"(.+?)"`)
 		username := pattern.FindStringSubmatch(string(configBytes))[1]
 		users = append(users, User{username, userDir})
 	}
 
-	return users
+	return users, nil
 }
 
 const urlFormat = `http://steamcommunity.com/id/%v/games?tab=all`
-func GetProfile(username string) string {
+func GetProfile(username string) (string, error) {
 	response, err := http.Get(fmt.Sprintf(urlFormat, username))
 	if err != nil {
-		panic(err)
+		return "", err
 	}
 
 	contentBytes, err := ioutil.ReadAll(response.Body)
 	response.Body.Close()
 	if err != nil {
-		panic(err)
+		return "", err
 	}
 
-	return string(contentBytes)
+	return string(contentBytes), nil
 }
 
 type Game struct {
@@ -63,17 +63,21 @@ type Game struct {
 }
 
 const gamePattern = `\{"appid":\s*(\d+),\s*"name":\s*"(.+?)"`
-func GetGames(username string) []Game {
+func GetGames(username string) ([]Game, error) {
 	pattern := regexp.MustCompile(gamePattern)
 
 	games := make([]Game, 0)
 
-	profile := GetProfile(username)
+	profile, err := GetProfile(username)
+	if err != nil {
+		return nil, err
+	}
+
 	for _, groups := range pattern.FindAllStringSubmatch(profile, -1) {
 		games = append(games, Game{groups[1], groups[2]})
 	}
 
-	return games
+	return games, nil
 }
 
 const imageUrlFormat = `http://cdn.steampowered.com/v/gfx/apps/STORE_APP_ID_HERE/header.jpg`
@@ -83,8 +87,7 @@ func DownloadImage(gameid string, filename string) error {
 		return err
 	}
 	
-	var imageBytes []byte
-	imageBytes, err = ioutil.ReadAll(response.Body)
+	imageBytes, err := ioutil.ReadAll(response.Body)
 	response.Body.Close()
 	return ioutil.WriteFile(filename, imageBytes, 0666)
 }
@@ -123,11 +126,20 @@ func main() {
 		panic(err)
 	}
 
-	for _, user := range GetUsers(installationDir) {
+	users, err := GetUsers(installationDir) 
+	if err != nil {
+		panic(err)
+	}
+
+	for _, user := range users {
 		fmt.Printf("Found user %v. Fetching game list...\n", user.Name)
 		continue
 
-		games := GetGames(user.Name) 
+		games, err := GetGames(user.Name) 
+		if err != nil {
+			panic(err)
+		}
+
 		fmt.Printf("Found %v games. Download images...\n", len(games))
 		for _, game := range games {
 			gridDir := filepath.Join(user.Dir, "grid")
