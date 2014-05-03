@@ -92,10 +92,6 @@ func DownloadImage(gameid string, filename string) error {
 	return ioutil.WriteFile(filename, imageBytes, 0666)
 }
 
-func containsSteam(path string) bool {
-	_, err := os.Stat(filepath.Join(path, "Steam"))
-	return err != nil
-}
 func GetSteamInstallation() (path string, err error) {
 	if len(os.Args) == 2 {
 		argDir := os.Args[1]
