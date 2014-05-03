@@ -163,13 +163,14 @@ func main() {
 
 		fmt.Printf("Found %v games. Downloading images...\n", len(games))
 		for i, game := range games {
-			PrintProgress(i, len(games))
+			PrintProgress(i+1, len(games))
 			gridDir := filepath.Join(user.Dir, "grid")
 			err := DownloadImage(game.Id, gridDir)
 			if err != nil {
 				panic(err)
 			}
 		}
+		fmt.Print("\n")
 	}
 
 	fmt.Println("Press enter to close this window.")
