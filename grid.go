@@ -1,3 +1,5 @@
+// Automatically downloads and configures Steam grid images for all games in a
+// given Steam installation.
 package main
 
 import (
@@ -11,11 +13,14 @@ import (
 	"regexp"
 )
 
+// User in the local steam installation.
 type User struct {
 	Name string
 	Dir  string
 }
 
+// Given the Steam installation dir (NOT the library!), returns all users in
+// this computer.
 func GetUsers(installationDir string) ([]User, error) {
 	userdataDir := filepath.Join(installationDir, "userdata")
 	files, err := ioutil.ReadDir(userdataDir)
@@ -28,12 +33,13 @@ func GetUsers(installationDir string) ([]User, error) {
 	for _, userDir := range files {
 		userId := userDir.Name()
 		userDir := filepath.Join(userdataDir, userId)
-		configFile := filepath.Join(userDir, "config", "localconfig.vdf")
 
+		configFile := filepath.Join(userDir, "config", "localconfig.vdf")
 		configBytes, err := ioutil.ReadFile(configFile)
 		if err != nil {
 			return nil, err
 		}
+
 		pattern := regexp.MustCompile(`"PersonaName"\s*"(.+?)"`)
 		username := pattern.FindStringSubmatch(string(configBytes))[1]
 		users = append(users, User{username, userDir})
@@ -42,8 +48,10 @@ func GetUsers(installationDir string) ([]User, error) {
 	return users, nil
 }
 
+// Steam profile URL format.
 const urlFormat = `http://steamcommunity.com/id/%v/games?tab=all`
 
+// Returns the public Steam profile for a given user, in HTML.
 func GetProfile(username string) (string, error) {
 	response, err := http.Get(fmt.Sprintf(urlFormat, username))
 	if err != nil {
@@ -59,38 +67,53 @@ func GetProfile(username string) (string, error) {
 	return string(contentBytes), nil
 }
 
+// A Steam game in a library. May or may not be installed.
 type Game struct {
+	// Official Steam id.
 	Id   string
+	// Warning, may contain Unicode characters.
 	Name string
+	// User created category. May be blank.
 	Category string
 }
 
-const gamePattern = `\{"appid":\s*(\d+),\s*"name":\s*"(.+?)"`
+// Pattern of game declarations in the public profile. It's actually JSON
+// inside Javascript, but this way is easier to extract.
+const profileGamePattern = `\{"appid":\s*(\d+),\s*"name":\s*"(.+?)"`
 
+// Returns all games from a given user, using both the public profile and local
+// files to gather the data.
 func GetGames(user User) ([]Game, error) {
 	profile, err := GetProfile(user.Name)
 	if err != nil {
 		return nil, err
 	}
 
-	pattern := regexp.MustCompile(gamePattern)
+	// Fetch game list from public profile.
+	pattern := regexp.MustCompile(profileGamePattern)
 	games := make([]Game, 0)
 	for _, groups := range pattern.FindAllStringSubmatch(profile, -1) {
 		games = append(games, Game{groups[1], groups[2], ""})
 	}
 
+	// Fetch game categories from local file.
 	sharedConfFile := filepath.Join(user.Dir, "7", "remote", "sharedconfig.vdf")
 	sharedConfBytes, err := ioutil.ReadFile(sharedConfFile)
 
 	sharedConf := string(sharedConfBytes)
+	// VDF patterN: "steamid" { "tags { "0" "category" } }
 	pattern = regexp.MustCompile(`"([0-9]+)"\s*{[^}]+?"tags"\s*{\s*"0"\s*"([^"]+)"`)
 	for _, groups := range pattern.FindAllStringSubmatch(sharedConf, -1) {
 		gameId := groups[1]
 		category := groups[2]
+
+		// Slow, could be made with a map, but there won't be enough items to
+		// make a difference.
 		for _, game := range games {
 			if game.Id == gameId {
 				game.Category = category
 				fmt.Println(game.Category, game.Name)
+				break
 			}
 		}
 	}
@@ -98,11 +121,13 @@ func GetGames(user User) ([]Game, error) {
 	return games, nil
 }
 
-const imageUrlFormat = `https://steamcdn-a.akamaihd.net/steam/apps/%v/header.jpg`
-const alternativeUrlFormat = `http://cdn.steampowered.com/v/gfx/apps/%v/header.jpg`
-
+// When all else fails, Google it. Unfortunately this is a deprecated API and
+// may go offline at any time. Because this is last resort the number of
+// requests shouldn't trigger any punishment.
 const googleSearchFormat = `https://ajax.googleapis.com/ajax/services/search/images?v=1.0&q=`
 
+// Returns the first steam grid image URL found by Google search of a given
+// game name.
 func getGoogleImage(gameName string) (string, error) {
 	url := googleSearchFormat + url.QueryEscape("steam grid OR header" + gameName)
 	response, err := http.Get(url)
@@ -115,13 +140,15 @@ func getGoogleImage(gameName string) (string, error) {
 		return "", err
 	}
 	response.Body.Close()
+	// Again, we could parse JSON. This may be a little too lazy, the pattern
+	// is very loose. The order could be wrong, for example.
 	pattern := regexp.MustCompile(`"width":"460","height":"215",[^}]+"unescapedUrl":"(.+?)"`)
 	imageUrl := pattern.FindStringSubmatch(string(responseBytes))[1]
 	return imageUrl, nil
 }
 
+// Tries to fetch a URL, returning the response only if it was positive.
 func tryDownload(url string) (*http.Response, error) {
-
 	response, err := http.Get(url)
 	if err != nil {
 		return nil, err
@@ -138,18 +165,28 @@ func tryDownload(url string) (*http.Response, error) {
 	return response, nil
 }
 
-func getImageAlternatives(game Game) (response *http.Response, fromGoogle bool, err error) {
-	response, err = tryDownload(fmt.Sprintf(imageUrlFormat, game.Id))
+// Primary URL for downloading grid images.
+const akamaiUrlFormat = `https://steamcdn-a.akamaihd.net/steam/apps/%v/header.jpg`
+// The subreddit mentions this as primary, but I've found Akamai to contain
+// more images and answer faster.
+const steamCdnUrlFormat = `http://cdn.steampowered.com/v/gfx/apps/%v/header.jpg`
+
+// Tries to load the grid image for a game from a number of alternative
+// sources. Returns the final response received and a flag indicating if it was
+// fro ma Google search (useful because we want to log the lower quality
+// images).
+func getImageAlternatives(game Game) (response *http.Response, fromSearch bool, err error) {
+	response, err = tryDownload(fmt.Sprintf(akamaiUrlFormat, game.Id))
 	if err == nil && response != nil {
 		return
 	}
 
-	response, err = tryDownload(fmt.Sprintf(alternativeUrlFormat, game.Id))
+	response, err = tryDownload(fmt.Sprintf(steamCdnUrlFormat, game.Id))
 	if err == nil && response != nil {
 		return
 	}
 
-	fromGoogle = true
+	fromSearch = true
 	url, err := getGoogleImage(game.Name)
 	if err != nil {
 		return
@@ -162,23 +199,30 @@ func getImageAlternatives(game Game) (response *http.Response, fromGoogle bool, 
 	return nil, false, nil
 }
 
-func DownloadImage(game Game, gridDir string) (found bool, fromGoogle bool, err error) {
+// Downloads the grid image for a game into the user's grid directory. Returns
+// flags indicating if the operation succeeded and if the image downloaded was
+// from a search.
+func DownloadImage(game Game, user User) (found bool, fromSearch bool, err error) {
+	gridDir := filepath.Join(user.Dir, "config", "grid")
 	filename := filepath.Join(gridDir, game.Id+".jpg")
 	if _, err := os.Stat(filename); err == nil {
 		// File already exists, skip it.
 		return true, false, nil
 	}
 
-	response, fromGoogle, err := getImageAlternatives(game)
+	response, fromSearch, err := getImageAlternatives(game)
 	if response == nil || err != nil {
 		return false, false, err
 	}
 
 	imageBytes, err := ioutil.ReadAll(response.Body)
 	response.Body.Close()
-	return true, fromGoogle, ioutil.WriteFile(filename, imageBytes, 0666)
+	return true, fromSearch, ioutil.WriteFile(filename, imageBytes, 0666)
 }
 
+// Returns the Steam installation directory in Windows. Should work for
+// internationalized systems, 32 and 64 bits and users that moved their
+// ProgramFiles folder. If a folder is given by program parameter, uses that.
 func GetSteamInstallation() (path string, err error) {
 	if len(os.Args) == 2 {
 		argDir := os.Args[1]
@@ -203,8 +247,12 @@ func GetSteamInstallation() (path string, err error) {
 	return "", errors.New("Could not find Steam installation folder.")
 }
 
+// Prints a progress bar, overriding the previous line. It looks like this:
+// [=========>        ] (50/100)
 func PrintProgress(current int, total int) {
+	// \r moves the cursor back to the start of the line.
 	fmt.Print("\r[")
+
 	printedHead := false
 	for i := 0; i < 40; i++ {
 		part := int(float64(i) * (float64(total) / 40.0))
@@ -217,9 +265,11 @@ func PrintProgress(current int, total int) {
 			fmt.Print(" ")
 		}
 	}
+
 	fmt.Printf("] (%v/%v)", current, total)
 }
 
+// Prints an error and quits.
 func errorAndExit(err error) {
 	fmt.Println("An unexpected error occurred:")
 	fmt.Println(err)
@@ -246,31 +296,30 @@ func main() {
 		}
 
 		notFounds := make([]Game, 0)
-		googleFounds := make([]Game, 0)
+		searchFounds := make([]Game, 0)
 		fmt.Printf("Found %v games. Downloading images...\n\n", len(games))
 		continue
 		for i, game := range games {
 			PrintProgress(i+1, len(games))
-			gridDir := filepath.Join(user.Dir, "config", "grid")
-			found, fromGoogle, err := DownloadImage(game, gridDir)
+			found, fromSearch, err := DownloadImage(game, user)
 			if err != nil {
 				errorAndExit(err)
 			}
 			if !found {
 				notFounds = append(notFounds, game)
 			}
-			if fromGoogle {
-				googleFounds = append(googleFounds, game)
+			if fromSearch {
+				searchFounds = append(searchFounds, game)
 			}
 		}
 		fmt.Print("\n\n\n")
 
-		if len(notFounds) == 0 && len(googleFounds) == 0 {
+		if len(notFounds) == 0 && len(searchFounds) == 0 {
 			fmt.Println("All grid images downloaded!")
 		} else {
-			if len(googleFounds) >= 1 {
-				fmt.Printf("%v images were found with a Google search and may not be accurate:.\n", len(googleFounds))
-				for _, game := range googleFounds {
+			if len(searchFounds) >= 1 {
+				fmt.Printf("%v images were found with a Google search and may not be accurate:.\n", len(searchFounds))
+				for _, game := range searchFounds {
 					fmt.Printf("* %v (steam id %v)\n", game.Name, game.Id)
 				}
 			}
