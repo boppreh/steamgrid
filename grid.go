@@ -1,18 +1,19 @@
 package main
 
 import (
+	"errors"
 	"fmt"
-	"os"
-	"regexp"
-	"path/filepath"
 	"io/ioutil"
 	"net/http"
-	"errors"
+	"net/url"
+	"os"
+	"path/filepath"
+	"regexp"
 )
 
 type User struct {
 	Name string
-	Dir string
+	Dir  string
 }
 
 func GetUsers(installationDir string) ([]User, error) {
@@ -42,6 +43,7 @@ func GetUsers(installationDir string) ([]User, error) {
 }
 
 const urlFormat = `http://steamcommunity.com/id/%v/games?tab=all`
+
 func GetProfile(username string) (string, error) {
 	response, err := http.Get(fmt.Sprintf(urlFormat, username))
 	if err != nil {
@@ -58,11 +60,12 @@ func GetProfile(username string) (string, error) {
 }
 
 type Game struct {
-	Id string
+	Id   string
 	Name string
 }
 
 const gamePattern = `\{"appid":\s*(\d+),\s*"name":\s*"(.+?)"`
+
 func GetGames(username string) ([]Game, error) {
 	pattern := regexp.MustCompile(gamePattern)
 
@@ -82,9 +85,28 @@ func GetGames(username string) ([]Game, error) {
 
 const imageUrlFormat = `https://steamcdn-a.akamaihd.net/steam/apps/%v/header.jpg`
 const alternativeUrlFormat = `http://cdn.steampowered.com/v/gfx/apps/%v/header.jpg`
-func tryDownload(gameId string, format string) (*http.Response, error) {
 
-	url := fmt.Sprintf(imageUrlFormat, gameId)
+const googleSearchFormat = `https://ajax.googleapis.com/ajax/services/search/images?v=1.0&q=`
+
+func getGoogleImage(gameName string) (string, error) {
+	url := googleSearchFormat + url.QueryEscape("steam grid OR header" + gameName)
+	response, err := http.Get(url)
+	if err != nil {
+		return "", err
+	}
+
+	responseBytes, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		return "", err
+	}
+	response.Body.Close()
+	pattern := regexp.MustCompile(`"width":"460","height":"215",[^}]+"unescapedUrl":"(.+?)"`)
+	imageUrl := pattern.FindStringSubmatch(string(responseBytes))[1]
+	return imageUrl, nil
+}
+
+func tryDownload(url string) (*http.Response, error) {
+
 	response, err := http.Get(url)
 	if err != nil {
 		return nil, err
@@ -101,26 +123,43 @@ func tryDownload(gameId string, format string) (*http.Response, error) {
 	return response, nil
 }
 
-func DownloadImage(gameId string, gridDir string) (found bool, err error) {
-	filename := filepath.Join(gridDir, gameId + ".jpg")
+func getImageAlternatives(game Game) (response *http.Response, err error) {
+	response, err = tryDownload(fmt.Sprintf(imageUrlFormat, game.Id))
+	if err == nil && response != nil {
+		return
+	}
+
+	response, err = tryDownload(fmt.Sprintf(alternativeUrlFormat, game.Id))
+	if err == nil && response != nil {
+		fmt.Println("Downloaded from alternative.")
+		return
+	}
+
+	url, err := getGoogleImage(game.Name)
+	if err != nil {
+		return
+	}
+	response, err = tryDownload(url)
+	if err == nil && response != nil {
+		fmt.Println("Downloaded from google images.")
+		return
+	}
+
+	return nil, nil
+}
+
+func DownloadImage(game Game, gridDir string) (found bool, err error) {
+	filename := filepath.Join(gridDir, game.Id+".jpg")
 	if _, err := os.Stat(filename); err == nil {
 		// File already exists, skip it.
 		return true, nil
 	}
 
-	var response *http.Response
-	response, err = tryDownload(gameId, imageUrlFormat)
-	if err != nil || response == nil {
-		response, err = tryDownload(gameId, alternativeUrlFormat)
-		if err != nil {
-			return false, err
-		} else if response == nil {
-			return false, nil
-		}
-
-		fmt.Printf("\n\nDownloaded %v from alternative url.\n\n")
+	response, err := getImageAlternatives(game)
+	if response == nil || err != nil {
+		return false, err
 	}
-	
+
 	imageBytes, err := ioutil.ReadAll(response.Body)
 	response.Body.Close()
 	return true, ioutil.WriteFile(filename, imageBytes, 0666)
@@ -179,7 +218,7 @@ func main() {
 		errorAndExit(err)
 	}
 
-	users, err := GetUsers(installationDir) 
+	users, err := GetUsers(installationDir)
 	if err != nil {
 		errorAndExit(err)
 	}
@@ -187,7 +226,7 @@ func main() {
 	for _, user := range users {
 		fmt.Printf("Found user %v. Fetching game list from profile...\n\n\n", user.Name)
 
-		games, err := GetGames(user.Name) 
+		games, err := GetGames(user.Name)
 		if err != nil {
 			errorAndExit(err)
 		}
@@ -197,7 +236,7 @@ func main() {
 		for i, game := range games {
 			PrintProgress(i+1, len(games))
 			gridDir := filepath.Join(user.Dir, "grid")
-			found, err := DownloadImage(game.Id, gridDir)
+			found, err := DownloadImage(game, gridDir)
 			if err != nil {
 				errorAndExit(err)
 			}
