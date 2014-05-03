@@ -80,27 +80,45 @@ func GetGames(username string) ([]Game, error) {
 	return games, nil
 }
 
-const imageUrlFormat = `http://cdn.steampowered.com/v/gfx/apps/%v/header.jpg`
-func DownloadImage(gameId string, gridDir string) (found bool, err error) {
-	url := fmt.Sprintf(imageUrlFormat, gameId)
-	filename := filepath.Join(gridDir, gameId + ".jpg")
+const imageUrlFormat = `https://steamcdn-a.akamaihd.net/steam/apps/%v/header.jpg`
+const alternativeUrlFormat = `http://cdn.steampowered.com/v/gfx/apps/%v/header.jpg`
+func tryDownload(gameId string, format string) (*http.Response, error) {
 
+	url := fmt.Sprintf(imageUrlFormat, gameId)
+	response, err := http.Get(url)
+	if err != nil {
+		return nil, err
+	}
+
+	if response.StatusCode == 404 {
+		// Some apps don't have an image and there's nothing we can do.
+		return nil, nil
+	} else if response.StatusCode > 400 {
+		// Other errors should be reported, though.
+		return nil, errors.New("Failed to download image " + url + ": " + response.Status)
+	}
+
+	return response, nil
+}
+
+func DownloadImage(gameId string, gridDir string) (found bool, err error) {
+	filename := filepath.Join(gridDir, gameId + ".jpg")
 	if _, err := os.Stat(filename); err == nil {
 		// File already exists, skip it.
 		return true, nil
 	}
 
-	response, err := http.Get(url)
-	if err != nil {
-		return false, err
-	}
+	var response *http.Response
+	response, err = tryDownload(gameId, imageUrlFormat)
+	if err != nil || response == nil {
+		response, err = tryDownload(gameId, alternativeUrlFormat)
+		if err != nil {
+			return false, err
+		} else if response == nil {
+			return false, nil
+		}
 
-	if response.StatusCode == 404 {
-		// Some apps don't have an image and there's nothing we can do.
-		return false, nil
-	} else if response.StatusCode > 400 {
-		// Other errors should be reported, though.
-		return false, errors.New("Failed to download image " + url + ": " + response.Status)
+		fmt.Printf("\n\nDownloaded %v from alternative url.\n\n")
 	}
 	
 	imageBytes, err := ioutil.ReadAll(response.Body)
