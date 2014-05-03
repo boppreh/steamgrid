@@ -82,8 +82,8 @@ type Game struct {
 const profileGamePattern = `\{"appid":\s*(\d+),\s*"name":\s*"(.+?)"`
 
 // Returns all games from a given user, using both the public profile and local
-// files to gather the data.
-func GetGames(user User) ([]Game, error) {
+// files to gather the data. Returns a map of game by ID.
+func GetGames(user User) (map[string]Game, error) {
 	profile, err := GetProfile(user.Name)
 	if err != nil {
 		return nil, err
@@ -91,9 +91,12 @@ func GetGames(user User) ([]Game, error) {
 
 	// Fetch game list from public profile.
 	pattern := regexp.MustCompile(profileGamePattern)
-	games := make([]Game, 0)
+	games := make(map[string]Game, 0)
 	for _, groups := range pattern.FindAllStringSubmatch(profile, -1) {
-		games = append(games, Game{groups[1], groups[2], ""})
+		gameId := groups[1]
+		gameName := groups[2]
+		category := ""
+		games[gameId] = Game{gameId, gameName, category}
 	}
 
 	// Fetch game categories from local file.
@@ -107,13 +110,14 @@ func GetGames(user User) ([]Game, error) {
 		gameId := groups[1]
 		category := groups[2]
 
-		// Slow, could be made with a map, but there won't be enough items to
-		// make a difference.
-		for _, game := range games {
-			if game.Id == gameId {
-				game.Category = category
-				break
-			}
+		game, ok := games[gameId]
+		if ok {
+			games[gameId] = Game{game.Id, game.Name, category}
+		} else {
+			// If for some reason it wasn't included in the profile, create a new
+			// entry for it now. Unfortunately we don't have a name.
+			gameName := ""
+			games[gameId] = Game{gameId, gameName, category}
 		}
 	}
 
@@ -299,8 +303,10 @@ func main() {
 		searchFounds := make([]Game, 0)
 		fmt.Printf("Found %v games. Downloading images...\n\n", len(games))
 
-		for i, game := range games {
-			PrintProgress(i+1, len(games))
+		i := 0
+		for _, game := range games {
+			i++
+			PrintProgress(i, len(games))
 			found, fromSearch, err := DownloadImage(game, user)
 			if err != nil {
 				errorAndExit(err)
