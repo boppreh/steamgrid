@@ -83,7 +83,7 @@ func GetGames(username string) ([]Game, error) {
 const imageUrlFormat = `http://cdn.steampowered.com/v/gfx/apps/%v/header.jpg`
 func DownloadImage(gameId string, gridDir string) error {
 	url := fmt.Sprintf(imageUrlFormat, gameId)
-	filename := filepath.Join(gridDir, filepath.Base(url))
+	filename := filepath.Join(gridDir, gameId + ".jpg")
 
 	if _, err := os.Stat(filename); err == nil {
 		// File already exists, skip it.
