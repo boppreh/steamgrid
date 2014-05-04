@@ -47,4 +47,4 @@ Something wrong?
 - **Can't load profile**: make sure you are connected to the internet and have a [public Steam profile](http://steamcommunity.com/discussions/forum/1/864980009946155418/). If you know how to detect a user's game list without access to their profile, drop me a message.
 - **Where's the Linux version?**: I don't have compiled binaries for linux, but you can install [Go](http://golang.org/) in your system and `go run steamgrid.go "YOUR_STEAM_FOLDER"`. I haven't tested but *It Should Work*™. May require sudo if the folder is write-protected.
 
-If you encounter any problems please [open an issue](https://github.com/boppreh/steamgrid/issues/new) or email me. All critics and suggestions are welcome.
+If you encounter any problems please [open an issue](https://github.com/boppreh/steamgrid/issues/new). All critics and suggestions are welcome.
