@@ -2,18 +2,14 @@ Auto Steam Grid
 ===============
 
 
-The Steam client has a neat grid view for your games, but it requires
-continuous internet access and customization has to be done game by game.
-Not anymore. This nifty program caches all your game images so you don't need
-internet access, searches for the ones that Steam is missing and it also
-applies overlays based on your categories.
+The Steam client has a neat grid view for your games, but it requires continuous internet access, customization has to be done game by game and some games don't have images. Not anymore. This nifty program caches all your game images so you don't need internet access, searches for the ones that Steam is missing and automatically applies customizable overlays based on your categories.
 
 How to use
 ----------
 
 1. [Download](https://github.com/boppreh/steamgrid/releases/download/v1.0.3/steamgrid.zip) and extract the zip wherever.
 2. *(optional)* Name the overlays after your categories. So if you have a category "Games I Love", put a nice little heart overlay there named "games i love.png". You can rename the defaults that came with the zip or get new ones at [/r/steamgrid](http://www.reddit.com/r/steamgrid/wiki/overlays).
-3. Run `steamgrid.exe` and wait a few seconds. No, really, it's all automatic. Not a single keypress required.
+3. Run `steamgrid.exe`, wait a few seconds and close the window. No, really, it's all automatic. Not a single keypress required.
 4. Open Steam in grid view and check the results.
 
 [Download here](https://github.com/boppreh/steamgrid/releases/download/v1.0.3/steamgrid.zip)
