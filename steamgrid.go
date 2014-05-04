@@ -71,6 +71,10 @@ func GetProfile(username string) (string, error) {
 		return "", err
 	}
 
+	if response.StatusCode >= 400 {
+		return "", errors.New("Profile not found. Make sure you have a public Steam profile.")
+	}
+
 	contentBytes, err := ioutil.ReadAll(response.Body)
 	response.Body.Close()
 	if err != nil {
@@ -356,7 +360,7 @@ func GetSteamInstallation() (path string, err error) {
 		return programFilesDir, nil
 	}
 
-	return "", errors.New("Could not find Steam installation folder.")
+	return "", errors.New("Could not find Steam installation folder. You can drag and drop the Steam folder into `steamgrid.exe` for a manual override.")
 }
 
 // Prints a progress bar, overriding the previous line. It looks like this:
@@ -408,6 +412,9 @@ func main() {
 	users, err := GetUsers(installationDir)
 	if err != nil {
 		errorAndExit(err)
+	}
+	if len(users) == 0 {
+		errorAndExit(errors.New("No users found. Have you used Steam before in this computer?"))
 	}
 
 	for _, user := range users {
