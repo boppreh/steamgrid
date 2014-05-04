@@ -148,6 +148,10 @@ const googleSearchFormat = `https://ajax.googleapis.com/ajax/services/search/ima
 // Returns the first steam grid image URL found by Google search of a given
 // game name.
 func getGoogleImage(gameName string) (string, error) {
+	if gameName == "" {
+		return "", nil
+	}
+
 	url := googleSearchFormat + url.QueryEscape("steam grid OR header"+gameName)
 	response, err := http.Get(url)
 	if err != nil {
