@@ -4,7 +4,6 @@ Auto Steam Grid
 
 The Steam client has a neat grid view for your games, but it requires
 continuous internet access and customization has to be done game by game.
-
 Not anymore. This nifty program caches all your game images so you don't need
 internet access, searches for the ones that Steam is missing and it also
 applies overlays based on your categories.
@@ -17,9 +16,7 @@ How to use
 3. Run `steamgrid.exe` and wait a few seconds. No, really, it's all automatic. Not a single keypress required.
 4. Open Steam in grid view and check the results.
 
-If the program could not find some image, which may happen with betas, prototypes and test games, you can set the image manually through the Steam client (right click > Set Custom Image). Run `steamgrid.exe` again to update the overlays.
-
-[Download zip here](https://github.com/boppreh/steamgrid/releases/download/v1.0.1/steamgrid.zip)
+[Download here](https://github.com/boppreh/steamgrid/releases/download/v1.0.1/steamgrid.zip)
 ---
 
 [![Steam screenshot with filled grid](http://i.imgur.com/abnqZ6C.png)](https://github.com/boppreh/steamgrid/releases/download/v1.0.1/steamgrid.zip)
@@ -42,5 +39,12 @@ Features
   overlay, but keeping a backup.
 - 100% fire and forget, no interaction required.
 
-If you encounter any problems please open an issue or email me. All critics and
-suggestions welcome.
+Something wrong?
+----------------
+
+- **Fails to find steam location**: You can drag and drop the Steam installation folder (not the library!) into `steamgrid.exe` for a manual override.
+- **A few images were not found**: Some images are hard to find. The program may miss a game, especially betas, prototypes and tests, but you can set an image manually through the Steam client (right click > `Set Custom Image`). Run `steamgrid.exe` again to update the overlays.
+- **Can't load profile**: make sure you are connected to the internet and have a [public Steam profile](http://steamcommunity.com/discussions/forum/1/864980009946155418/). If you know how to detect a user's game list without access to their profile, drop me a message.
+- **Where's the Linux version?**: I don't have compiled binaries for linux, but you can install [Go](http://golang.org/) in your system and `go run steamgrid.go "YOUR_STEAM_FOLDER"`. I haven't tested but it *should* work. May require sudo if the folder is write-protected.
+
+If you encounter any problems please [open an issue](https://github.com/boppreh/steamgrid/issues/new) or email me. All critics and suggestions are welcome.
