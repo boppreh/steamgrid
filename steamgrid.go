@@ -3,10 +3,10 @@
 package main
 
 import (
-	"image"
-	"image/draw"
 	"errors"
 	"fmt"
+	"image"
+	"image/draw"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -55,7 +55,7 @@ func GetUsers(installationDir string) ([]User, error) {
 		// Makes sure the grid directory exists.
 		gridDir := filepath.Join(userDir, "config", "grid")
 		err = os.MkdirAll(gridDir, 0666)
-		if err != nil{
+		if err != nil {
 			return nil, err
 		}
 
@@ -215,7 +215,7 @@ const steamCdnUrlFormat = `http://cdn.steampowered.com/v/gfx/apps/%v/header.jpg`
 
 // Tries to load the grid image for a game from a number of alternative
 // sources. Returns the final response received and a flag indicating if it was
-// fro ma Google search (useful because we want to log the lower quality
+// from a Google search (useful because we want to log the lower quality
 // images).
 func getImageAlternatives(game *Game) (response *http.Response, fromSearch bool, err error) {
 	response, err = tryDownload(fmt.Sprintf(akamaiUrlFormat, game.Id))
@@ -275,6 +275,7 @@ func loadImage(path string) (img image.Image, err error) {
 	img, _, err = image.Decode(reader)
 	return
 }
+
 // Loads the overlays from the given dir, returning a map of name -> image.
 func LoadOverlays(dir string) (overlays map[string]image.Image, err error) {
 	overlays = make(map[string]image.Image, 0)
@@ -327,9 +328,9 @@ func ApplyOverlay(game *Game, overlays map[string]image.Image) (err error) {
 		return err
 	}
 
-    result := image.NewRGBA(gameImage.Bounds().Union(overlayImage.Bounds()))
-    draw.Draw(result, result.Bounds(), gameImage, image.ZP, draw.Src)
-    draw.Draw(result, result.Bounds(), overlayImage, image.Point{0,0}, draw.Over)
+	result := image.NewRGBA(gameImage.Bounds().Union(overlayImage.Bounds()))
+	draw.Draw(result, result.Bounds(), gameImage, image.ZP, draw.Src)
+	draw.Draw(result, result.Bounds(), overlayImage, image.Point{0, 0}, draw.Over)
 
 	ext := filepath.Ext(game.ImagePath)
 	backupPath := strings.TrimSuffix(game.ImagePath, ext) + " (original)" + ext
@@ -341,9 +342,9 @@ func ApplyOverlay(game *Game, overlays map[string]image.Image) (err error) {
 		}
 	}
 
-    resultFile, _ := os.Create(game.ImagePath)
-    defer resultFile.Close()
-    return jpeg.Encode(resultFile, result, &jpeg.Options{90})
+	resultFile, _ := os.Create(game.ImagePath)
+	defer resultFile.Close()
+	return jpeg.Encode(resultFile, result, &jpeg.Options{90})
 }
 
 // Returns the Steam installation directory in Windows. Should work for
