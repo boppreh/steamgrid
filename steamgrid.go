@@ -46,6 +46,13 @@ func GetUsers(installationDir string) ([]User, error) {
 			return nil, err
 		}
 
+		// Makes sure the grid directory exists.
+		gridDir := filepath.Join(userDir, "config", "grid")
+		err = os.MkdirAll(gridDir, 0666)
+		if err != nil{
+			return nil, err
+		}
+
 		pattern := regexp.MustCompile(`"PersonaName"\s*"(.+?)"`)
 		username := pattern.FindStringSubmatch(string(configBytes))[1]
 		users = append(users, User{username, userDir})
