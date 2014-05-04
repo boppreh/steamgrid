@@ -12,17 +12,17 @@ applies overlays based on your categories.
 How to use
 ----------
 
-1. [Download](https://github.com/boppreh/steamgrid/releases/download/v1.0-alpha/steamgrid.zip) and extract the zip wherever.
+1. [Download](https://github.com/boppreh/steamgrid/releases/download/v1.0.1/steamgrid.zip) and extract the zip wherever.
 2. *(optional)* Name the overlays after your categories. So if you have a category "Games I Love", put a nice little heart overlay there named "games i love.png". You can rename the defaults that came with the zip or get new ones at [/r/steamgrid](http://www.reddit.com/r/steamgrid/wiki/overlays).
 3. Run `steamgrid.exe` and wait a few seconds. No, really, it's all automatic. Not a single keypress required.
 4. Open Steam in grid view and check the results.
 
 If the program could not find some image, which may happen with betas, prototypes and test games, you can set the image manually through the Steam client (right click > Set Custom Image). Run `steamgrid.exe` again to update the overlays.
 
-[Download zip here](https://github.com/boppreh/steamgrid/releases/download/v1.0-alpha/steamgrid.zip)
+[Download zip here](https://github.com/boppreh/steamgrid/releases/download/v1.0.1/steamgrid.zip)
 ---
 
-[![Steam screenshot with filled grid](http://i.imgur.com/abnqZ6C.png)](https://github.com/boppreh/steamgrid/releases/download/v1.0-alpha/steamgrid.zip)
+[![Steam screenshot with filled grid](http://i.imgur.com/abnqZ6C.png)](https://github.com/boppreh/steamgrid/releases/download/v1.0.1/steamgrid.zip)
 
 
 Features
