@@ -136,7 +136,7 @@ func GetGames(user User) (map[string]*Game, error) {
 // When all else fails, Google it. Unfortunately this is a deprecated API and
 // may go offline at any time. Because this is last resort the number of
 // requests shouldn't trigger any punishment.
-const googleSearchFormat = `https://ajax.googleapis.com/ajax/services/search/images?v=1.0&q=`
+const googleSearchFormat = `https://ajax.googleapis.com/ajax/services/search/images?v=1.0&rsz=8&q=`
 
 // Returns the first steam grid image URL found by Google search of a given
 // game name.
