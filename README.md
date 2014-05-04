@@ -17,7 +17,7 @@ How to use
 4. Open Steam in grid view and check the results.
 
 [Download here](https://github.com/boppreh/steamgrid/releases/download/v1.0.2/steamgrid.zip)
----z
+---
 
 [![Steam screenshot with filled grid](http://i.imgur.com/abnqZ6C.png)](https://github.com/boppreh/steamgrid/releases/download/v1.0.2/steamgrid.zip)
 
