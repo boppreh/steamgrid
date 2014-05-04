@@ -41,6 +41,12 @@ func GetUsers(installationDir string) ([]User, error) {
 		userDir := filepath.Join(userdataDir, userId)
 
 		configFile := filepath.Join(userDir, "config", "localconfig.vdf")
+		// Malformed user directory. Without the localconfig file we can't get
+		// the username and the game list, so we skip it.
+		if _, err := os.Stat(configFile); err != nil {
+			continue
+		}
+
 		configBytes, err := ioutil.ReadFile(configFile)
 		if err != nil {
 			return nil, err
@@ -102,15 +108,15 @@ const profileGamePattern = `\{"appid":\s*(\d+),\s*"name":\s*"(.+?)"`
 
 // Returns all games from a given user, using both the public profile and local
 // files to gather the data. Returns a map of game by ID.
-func GetGames(user User) (map[string]*Game, error) {
+func GetGames(user User) (games map[string]*Game, err error) {
 	profile, err := GetProfile(user.Name)
 	if err != nil {
-		return nil, err
+		return
 	}
 
 	// Fetch game list from public profile.
 	pattern := regexp.MustCompile(profileGamePattern)
-	games := make(map[string]*Game, 0)
+	games = make(map[string]*Game, 0)
 	for _, groups := range pattern.FindAllStringSubmatch(profile, -1) {
 		gameId := groups[1]
 		gameName := groups[2]
@@ -121,6 +127,10 @@ func GetGames(user User) (map[string]*Game, error) {
 
 	// Fetch game categories from local file.
 	sharedConfFile := filepath.Join(user.Dir, "7", "remote", "sharedconfig.vdf")
+	if _, err := os.Stat(sharedConfFile); err != nil {
+		// No categories file found, skipping this part.
+		return games, nil
+	}
 	sharedConfBytes, err := ioutil.ReadFile(sharedConfFile)
 
 	sharedConf := string(sharedConfBytes)
@@ -141,7 +151,7 @@ func GetGames(user User) (map[string]*Game, error) {
 		}
 	}
 
-	return games, nil
+	return
 }
 
 // When all else fails, Google it. Unfortunately this is a deprecated API and
@@ -389,6 +399,7 @@ func PrintProgress(current int, total int) {
 func errorAndExit(err error) {
 	fmt.Println("An unexpected error occurred:")
 	fmt.Println(err)
+	fmt.Println("\n\nPress enter to close this window.")
 	os.Stdin.Read(make([]byte, 1))
 	os.Exit(1)
 }
@@ -414,7 +425,7 @@ func main() {
 		errorAndExit(err)
 	}
 	if len(users) == 0 {
-		errorAndExit(errors.New("No users found. Have you used Steam before in this computer?"))
+		errorAndExit(errors.New("No users found at Steam/userdata. Have you used Steam before in this computer?"))
 	}
 
 	for _, user := range users {
