@@ -157,7 +157,7 @@ func getGoogleImage(gameName string) (string, error) {
 	pattern := regexp.MustCompile(`"width":"460","height":"215",[^}]+"unescapedUrl":"(.+?)"`)
 	matches := pattern.FindStringSubmatch(string(responseBytes))
 	if len(matches) >= 1 {
-		return matches[0], nil
+		return matches[1], nil
 	} else {
 		return "", nil
 	}
