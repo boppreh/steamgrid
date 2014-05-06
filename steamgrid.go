@@ -361,6 +361,11 @@ func GetSteamInstallation() (path string, err error) {
 		}
 	}
 
+	linuxSteamDir := filepath.Join("~", ".local", "share", "Steam")
+	if _, err = os.Stat(linuxSteamDir); err == nil {
+		return linuxSteamDir, nil
+	}
+
 	programFiles86Dir := filepath.Join(os.Getenv("ProgramFiles(x86)"), "Steam")
 	if _, err = os.Stat(programFiles86Dir); err == nil {
 		return programFiles86Dir, nil
