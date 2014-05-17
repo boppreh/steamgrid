@@ -97,8 +97,8 @@ type Game struct {
 	Id string
 	// Warning, may contain Unicode characters.
 	Name string
-	// User created category. May be blank.
-	Category string
+	// Tags, including user-created category and Steam's "Favorite" tag.
+	Tags []string
 	// Path for the grid image.
 	ImagePath string
 }
@@ -121,9 +121,9 @@ func GetGames(user User) (games map[string]*Game, err error) {
 	for _, groups := range pattern.FindAllStringSubmatch(profile, -1) {
 		gameId := groups[1]
 		gameName := groups[2]
-		category := ""
+		tags := []string{""}
 		imagePath := ""
-		games[gameId] = &Game{gameId, gameName, category, imagePath}
+		games[gameId] = &Game{gameId, gameName, tags, imagePath}
 	}
 
 	// Fetch game categories from local file.
@@ -136,19 +136,24 @@ func GetGames(user User) (games map[string]*Game, err error) {
 
 	sharedConf := string(sharedConfBytes)
 	// VDF patterN: "steamid" { "tags { "0" "category" } }
-	pattern = regexp.MustCompile(`"([0-9]+)"\s*{[^}]+?"tags"\s*{\s*"0"\s*"([^"]+)"`)
-	for _, groups := range pattern.FindAllStringSubmatch(sharedConf, -1) {
-		gameId := groups[1]
-		category := groups[2]
+	gamePattern := regexp.MustCompile(`"([0-9]+)"\s*{[^}]+?"tags"\s*{([^}]+?)}`)
+	tagsPattern := regexp.MustCompile(`"[0-9]+"\s*"(.+?)"`)
+	for _, gameGroups := range gamePattern.FindAllStringSubmatch(sharedConf, -1) {
+		gameId := gameGroups[1]
+		tagsText := gameGroups[2]
 
-		game, ok := games[gameId]
-		if ok {
-			game.Category = category
-		} else {
-			// If for some reason it wasn't included in the profile, create a new
-			// entry for it now. Unfortunately we don't have a name.
-			gameName := ""
-			games[gameId] = &Game{gameId, gameName, category, ""}
+		for _, tagGroups := range tagsPattern.FindAllStringSubmatch(tagsText, -1) {
+			tag := tagGroups[1]
+
+			game, ok := games[gameId]
+			if ok {
+				game.Tags = append(game.Tags, tag)
+			} else {
+				// If for some reason it wasn't included in the profile, create a new
+				// entry for it now. Unfortunately we don't have a name.
+				gameName := ""
+				games[gameId] = &Game{gameId, gameName, []string{tag}, ""}
+			}
 		}
 	}
 
@@ -296,9 +301,10 @@ func LoadOverlays(dir string) (overlays map[string]image.Image, err error) {
 			return nil, err
 		}
 
-		// Normalize overlay name.
 		name := strings.TrimSuffix(file.Name(), filepath.Ext(file.Name()))
-		overlays[strings.ToLower(name)] = img
+		// Normalize overlay name.
+		name = strings.TrimRight(strings.ToLower(name), "s")
+		overlays[name] = img
 	}
 
 	return
@@ -316,36 +322,44 @@ func ApplyOverlay(game *Game, overlays map[string]image.Image) (err error) {
 		return nil
 	}
 
-	// Normalize overlay name.
-	categoryName := strings.ToLower(game.Category)
+	for _, tag := range game.Tags {
+		// Normalize tag name by lower-casing it and remove trailing "s".
+		tagName := strings.TrimRight(strings.ToLower(tag), "s")
 
-	overlayImage, ok := overlays[categoryName]
-	if !ok {
-		return
-	}
+		overlayImage, ok := overlays[tagName]
+		if !ok {
+			continue
+		}
 
-	gameImage, err := loadImage(game.ImagePath)
-	if err != nil {
-		return err
-	}
+		gameImage, err := loadImage(game.ImagePath)
+		if err != nil {
+			return err
+		}
 
-	result := image.NewRGBA(gameImage.Bounds().Union(overlayImage.Bounds()))
-	draw.Draw(result, result.Bounds(), gameImage, image.ZP, draw.Src)
-	draw.Draw(result, result.Bounds(), overlayImage, image.Point{0, 0}, draw.Over)
+		result := image.NewRGBA(gameImage.Bounds().Union(overlayImage.Bounds()))
+		draw.Draw(result, result.Bounds(), gameImage, image.ZP, draw.Src)
+		draw.Draw(result, result.Bounds(), overlayImage, image.Point{0, 0}, draw.Over)
 
-	ext := filepath.Ext(game.ImagePath)
-	backupPath := strings.TrimSuffix(game.ImagePath, ext) + " (original)" + ext
-	if _, err := os.Stat(backupPath); err != nil {
-		// Backup doesn't exist, create it.
-		err = os.Rename(game.ImagePath, backupPath)
+		ext := filepath.Ext(game.ImagePath)
+		backupPath := strings.TrimSuffix(game.ImagePath, ext) + " (original)" + ext
+		if _, err := os.Stat(backupPath); err != nil {
+			// Backup doesn't exist, create it.
+			err = os.Rename(game.ImagePath, backupPath)
+			if err != nil {
+				return err
+			}
+		}
+
+		resultFile, _ := os.Create(game.ImagePath)
+		defer resultFile.Close()
+
+		err = jpeg.Encode(resultFile, result, &jpeg.Options{90})
 		if err != nil {
 			return err
 		}
 	}
 
-	resultFile, _ := os.Create(game.ImagePath)
-	defer resultFile.Close()
-	return jpeg.Encode(resultFile, result, &jpeg.Options{90})
+	return nil
 }
 
 // Returns the Steam installation directory in Windows. Should work for
