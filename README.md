@@ -7,15 +7,15 @@ The Steam client has a neat grid view for your games, but it requires continuous
 How to use
 ----------
 
-1. [Download](https://github.com/boppreh/steamgrid/releases/download/v1.0.3/steamgrid.zip) and extract the zip wherever.
+1. [Download](https://github.com/boppreh/steamgrid/releases/download/v1.0.4/steamgrid.zip) and extract the zip wherever.
 2. *(optional)* Name the overlays after your categories. So if you have a category "Games I Love", put a nice little heart overlay there named "games i love.png". You can rename the defaults that came with the zip or get new ones at [/r/steamgrid](http://www.reddit.com/r/steamgrid/wiki/overlays).
 3. Run `steamgrid.exe`, wait a few seconds and close the window. No, really, it's all automatic. Not a single keypress required.
 4. Open Steam in grid view and check the results.
 
-[Download here](https://github.com/boppreh/steamgrid/releases/download/v1.0.3/steamgrid.zip)
+[Download here](https://github.com/boppreh/steamgrid/releases/download/v1.0.4/steamgrid.zip)
 ---
 
-[![Steam screenshot with filled grid](http://i.imgur.com/abnqZ6C.png)](https://github.com/boppreh/steamgrid/releases/download/v1.0.3/steamgrid.zip)
+[![Steam screenshot with filled grid](http://i.imgur.com/abnqZ6C.png)](https://github.com/boppreh/steamgrid/releases/download/v1.0.4/steamgrid.zip)
 
 
 Features
@@ -38,7 +38,7 @@ Features
 Something wrong?
 ----------------
 
-- **Where's the Linux version?**: It's not well tested, but the [latest release has a Linux version](https://github.com/boppreh/steamgrid/releases/download/v1.0.3/steamgrid-linux.zip). Please report any issues you may have. If you want to run from source, just install Go (`sudo apt-get install golang`) and run `go run steamgrid.go`.
+- **Where's the Linux version?**: It's not well tested, but the [latest release has a Linux version](https://github.com/boppreh/steamgrid/releases/download/v1.0.4/steamgrid-linux.zip). Please report any issues you may have. If you want to run from source, just install Go (`sudo apt-get install golang`) and run `go run steamgrid.go`.
 - **Fails to find steam location**: You can drag and drop the Steam installation folder (not the library!) into `steamgrid.exe` for a manual override.
 - **A few images were not found**: Some images are hard to find. The program may miss a game, especially betas, prototypes and tests, but you can set an image manually through the Steam client (right click > `Set Custom Image`). Run `steamgrid.exe` again to update the overlays.
 - **Can't load profile**: make sure you are connected to the internet and have a [public Steam profile](http://steamcommunity.com/discussions/forum/1/864980009946155418/). If you know how to detect a user's game list without access to their profile, drop me a message.
