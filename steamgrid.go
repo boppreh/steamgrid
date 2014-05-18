@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"strconv"
 
 	"image/jpeg"
 	_ "image/png"
@@ -27,6 +28,9 @@ type User struct {
 	SteamId64 string
 	Dir       string
 }
+
+// Used to convert between SteamId32 and SteamId64.
+const idConversionConstant = 76561197960265728
 
 // Given the Steam installation dir (NOT the library!), returns all users in
 // this computer.
@@ -64,14 +68,16 @@ func GetUsers(installationDir string) ([]User, error) {
 
 		pattern := regexp.MustCompile(`"PersonaName"\s*"(.+?)"`)
 		username := pattern.FindStringSubmatch(string(configBytes))[1]
-		users = append(users, User{username, userId, "", userDir})
+
+		steamId32, err := strconv.ParseInt(userId, 10, 64)
+		steamId64 := steamId32 + idConversionConstant
+		strSteamId64 := strconv.FormatInt(steamId64, 10)
+		users = append(users, User{username, userId, strSteamId64, userDir})
 	}
 
 	return users, nil
 }
 
-// URL of the service that finds steam profiles by their SteamId32.
-const idFinderFormat = `http://steamidfinder.ru/%v`
 // URL to get the game list from the SteamId64.
 const profilePermalinkFormat = `http://steamcommunity.com/profiles/%v/games?tab=all`
 // The Steam website has the terrible habit of returning 200 OK when requests
@@ -81,57 +87,8 @@ const profilePermalinkFormat = `http://steamcommunity.com/profiles/%v/games?tab=
 const steamProfileErrorMessage = `The specified profile could not be found.`
 
 // Returns the HTML profile from a user from their SteamId32.
-func GetProfileFromId(user User) (string, error) {
-	response, err := http.Get(fmt.Sprintf(idFinderFormat, user.SteamId32))
-	if err != nil {
-		return "", err
-	}
-
-	if response.StatusCode >= 400 {
-		return "", errors.New("Failed to connect to webservice.")
-	}
-
-	pattern := regexp.MustCompile(`"http://steamcommunity.com/profiles/(.+?)"`)
-	contentBytes, err := ioutil.ReadAll(response.Body)
-	response.Body.Close()
-	if err != nil {
-		return "", err
-	}
-	matches := pattern.FindStringSubmatch(string(contentBytes))
-	if len(matches) == 0 {
-		return "", errors.New("Failed to find SteamId64")
-	}
-	user.SteamId64 = matches[1]
-
-	response, err = http.Get(fmt.Sprintf(profilePermalinkFormat, user.SteamId64))
-	if err != nil {
-		return "", err
-	}
-
-	if response.StatusCode >= 400 {
-		return "", errors.New("Profile not found. Make sure you have a public Steam profile.")
-	}
-
-	contentBytes, err = ioutil.ReadAll(response.Body)
-	response.Body.Close()
-	if err != nil {
-		return "", err
-	}
-
-	profile := string(contentBytes)
-	if strings.Contains(profile, steamProfileErrorMessage) {
-		return "", errors.New("Profile not found.")
-	}
-
-	return profile, nil
-}
-
-const profileNameFormat = `http://steamcommunity.com/id/%v/games?tab=all`
-
-// Returns the HTML profile from a user from their username, assuming it is the
-// same as their public URL.
-func GetProfileFromName(user User) (string, error) {
-	response, err := http.Get(fmt.Sprintf(profileNameFormat, user.Name))
+func GetProfile(user User) (string, error) {
+	response, err := http.Get(fmt.Sprintf(profilePermalinkFormat, user.SteamId64))
 	if err != nil {
 		return "", err
 	}
@@ -173,15 +130,9 @@ const profileGamePattern = `\{"appid":\s*(\d+),\s*"name":\s*"(.+?)"`
 // Returns all games from a given user, using both the public profile and local
 // files to gather the data. Returns a map of game by ID.
 func GetGames(user User) (games map[string]*Game, err error) {
-	// Try to get the profile from the ID, and if we fail try by name.
-	profile, err := GetProfileFromId(user)
+	profile, err := GetProfile(user)
 	if err != nil {
-		fmt.Println(err)
-		profile, err = GetProfileFromName(user)
-
-		if err != nil {
-			return
-		}
+		return
 	}
 
 	// Fetch game list from public profile.
