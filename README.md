@@ -15,7 +15,7 @@ How to use
 [Download here](https://github.com/boppreh/steamgrid/releases/download/v1.1.0-alpha/steamgrid.zip)
 ---
 
-[![Program screenshot](http://i.imgur.com/QgwSbcq.png)](https://github.com/boppreh/steamgrid/releases/download/v1.1.0-alpha/steamgrid.zip)
+[![Program screenshot](http://i.imgur.com/rnLQ6V4.png)](https://github.com/boppreh/steamgrid/releases/download/v1.1.0-alpha/steamgrid.zip)
 [![Steam screenshot with filled grid](http://i.imgur.com/abnqZ6C.png)](https://github.com/boppreh/steamgrid/releases/download/v1.1.0-alpha/steamgrid.zip)
 
 
