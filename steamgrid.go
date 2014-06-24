@@ -14,9 +14,11 @@ import (
 	"os/user"
 	"path/filepath"
 	"regexp"
-	"strings"
 	"strconv"
+	"strings"
+	"time"
 
+	"github.com/boppreh/go-ui"
 	"image/jpeg"
 	_ "image/png"
 )
@@ -80,6 +82,7 @@ func GetUsers(installationDir string) ([]User, error) {
 
 // URL to get the game list from the SteamId64.
 const profilePermalinkFormat = `http://steamcommunity.com/profiles/%v/games?tab=all`
+
 // The Steam website has the terrible habit of returning 200 OK when requests
 // fail, and signaling the error in HTML. So we have to parse the request to
 // check if it has failed, and cross our fingers that they don't change the
@@ -417,53 +420,43 @@ func GetSteamInstallation() (path string, err error) {
 	return "", errors.New("Could not find Steam installation folder. You can drag and drop the Steam folder into `steamgrid.exe` for a manual override.")
 }
 
-// Prints a progress bar, overriding the previous line. It looks like this:
-// [=========>        ] (50/100)
-func PrintProgress(current int, total int) {
-	// \r moves the cursor back to the start of the line.
-	fmt.Print("\r[")
-
-	printedHead := false
-	for i := 0; i < 40; i++ {
-		part := int(float64(i) * (float64(total) / 40.0))
-		if part < current {
-			fmt.Print("=")
-		} else if !printedHead {
-			printedHead = true
-			fmt.Print(">")
-		} else {
-			fmt.Print(" ")
-		}
-	}
-
-	fmt.Printf("] (%v/%v)", current, total)
-}
-
 // Prints an error and quits.
 func errorAndExit(err error) {
-	fmt.Println("An unexpected error occurred:")
-	fmt.Println(err)
-	fmt.Println("\n\nPress enter to close this window.")
-	os.Stdin.Read(make([]byte, 1))
+	goui.Error("An unexpected error occurred:", err.Error())
 	os.Exit(1)
 }
 
 func main() {
-	overlays, err := LoadOverlays("overlays by category")
+	goui.Start(func() {
+		http.DefaultTransport.(*http.Transport).ResponseHeaderTimeout = time.Second * 10
+
+		descriptions := make(chan string)
+		progress := make(chan int)
+
+		go goui.Progress("SteamGrid", descriptions, progress, func() { os.Exit(1) })
+		startApplication(descriptions, progress)
+	})
+}
+
+func startApplication(descriptions chan string, progress chan int) {
+	descriptions <- "Loading overlays..."
+	overlays, err := LoadOverlays(filepath.Join(filepath.Dir(os.Args[0]), "overlays by category"))
 	if err != nil {
 		errorAndExit(err)
 	}
 	if len(overlays) == 0 {
-		fmt.Printf("No category overlays found. You can put overlay images in the folder 'overlays by category', where the filename is the game category.\n\n")
-	} else {
-		fmt.Printf("Loaded %v category overlays.\n\n", len(overlays))
+		// I'm trying to use a message box here, but for some reason the
+		// message appears twice and there's an error a closed channel.
+		fmt.Println("No overlays", "No category overlays found. You can put overlay images in the folder 'overlays by category', where the filename is the game category.\n\nContinuing without overlays...")
 	}
 
+	descriptions <- "Looking for Steam directory..."
 	installationDir, err := GetSteamInstallation()
 	if err != nil {
 		errorAndExit(err)
 	}
 
+	descriptions <- "Loading users..."
 	users, err := GetUsers(installationDir)
 	if err != nil {
 		errorAndExit(err)
@@ -472,22 +465,30 @@ func main() {
 		errorAndExit(errors.New("No users found at Steam/userdata. Have you used Steam before in this computer?"))
 	}
 
+	notFounds := make([]*Game, 0)
+	searchFounds := make([]*Game, 0)
+
 	for _, user := range users {
-		fmt.Printf("Found user %v. Fetching game list from public profile...\n\n\n", user.Name)
+		descriptions <- "Loading games for " + user.Name
 
 		games, err := GetGames(user)
 		if err != nil {
 			errorAndExit(err)
 		}
 
-		notFounds := make([]*Game, 0)
-		searchFounds := make([]*Game, 0)
-		fmt.Printf("Found %v games. Downloading images...\n\n", len(games))
-
 		i := 0
 		for _, game := range games {
 			i++
-			PrintProgress(i, len(games))
+			progress <- i * 100 / len(games)
+			var name string
+			if game.Name != "" {
+				name = game.Name
+			} else {
+				name = "unknown game with id " + game.Id
+			}
+			descriptions <- fmt.Sprintf("Processing %v (%v/%v)",
+				name, i, len(games))
+
 			found, fromSearch, err := DownloadImage(game, user)
 			if err != nil {
 				errorAndExit(err)
@@ -505,30 +506,34 @@ func main() {
 				errorAndExit(err)
 			}
 		}
-		fmt.Print("\n\n\n")
 
-		if len(notFounds) == 0 && len(searchFounds) == 0 {
-			fmt.Println("All grid images downloaded and overlays applied!")
-		} else {
-			if len(searchFounds) >= 1 {
-				fmt.Printf("%v images were found with a Google search and may not be accurate:.\n", len(searchFounds))
-				for _, game := range searchFounds {
-					fmt.Printf("* %v (steam id %v)\n", game.Name, game.Id)
-				}
-			}
-
-			fmt.Print("\n\n")
-
-			if len(notFounds) >= 1 {
-				fmt.Printf("%v images could not be found anywhere:\n", len(notFounds))
-				for _, game := range notFounds {
-					fmt.Printf("* %v (steam id %v)\n", game.Name, game.Id)
-				}
-			}
-		}
 	}
 
-	fmt.Print("\n\n")
-	fmt.Println("You can press enter to close this window.")
-	os.Stdin.Read(make([]byte, 1))
+	close(progress)
+
+	message := ""
+	if len(notFounds) == 0 && len(searchFounds) == 0 {
+		message += "All grid images downloaded and overlays applied!\n\n"
+	} else {
+		if len(searchFounds) >= 1 {
+			message += fmt.Sprintf("%v images were found with a Google search and may not be accurate:\n", len(searchFounds))
+			for _, game := range searchFounds {
+				message += fmt.Sprintf("* %v (steam id %v)\n", game.Name, game.Id)
+			}
+
+			message += "\n\n"
+		}
+
+		if len(notFounds) >= 1 {
+			message += fmt.Sprintf("%v images could not be found anywhere:\n", len(notFounds))
+			for _, game := range notFounds {
+				message += fmt.Sprintf("* %v (steam id %v)\n", game.Name, game.Id)
+			}
+
+			message += "\n\n"
+		}
+	}
+	message += "Open Steam in grid view to see the results!"
+
+	goui.Info("Results", message)
 }
