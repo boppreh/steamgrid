@@ -63,10 +63,16 @@ func GetUsers(installationDir string) ([]User, error) {
 
 		// Makes sure the grid directory exists.
 		gridDir := filepath.Join(userDir, "config", "grid")
-		err = os.MkdirAll(gridDir, 0666)
+		err = os.MkdirAll(gridDir, 0777)
 		if err != nil {
 			return nil, err
 		}
+
+		// The Linux version of Steam ships with the "grid" dir without executable bit.
+		// This in turn denies permission to everything inside the folder. This line is
+		// here to ensure we have the correct permission.
+		fmt.Println("Setting permission...")
+		os.Chmod(gridDir, 0777)
 
 		pattern := regexp.MustCompile(`"PersonaName"\s*"(.+?)"`)
 		username := pattern.FindStringSubmatch(string(configBytes))[1]
@@ -300,7 +306,7 @@ func loadImage(path string) (img image.Image, err error) {
 		return
 	}
 	defer reader.Close()
-
+	
 	img, _, err = image.Decode(reader)
 	return
 }
@@ -321,7 +327,7 @@ func LoadOverlays(dir string) (overlays map[string]image.Image, err error) {
 	for _, file := range files {
 		img, err := loadImage(filepath.Join(dir, file.Name()))
 		if err != nil {
-			return nil, err
+			return overlays, err
 		}
 
 		name := strings.TrimSuffix(file.Name(), filepath.Ext(file.Name()))
