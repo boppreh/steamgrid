@@ -3,6 +3,7 @@
 package main
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"image"
@@ -130,6 +131,8 @@ type Game struct {
 	Tags []string
 	// Path for the grid image.
 	ImagePath string
+	// Raw bytes of the encoded image (usually jpg).
+	ImageBytes []byte
 }
 
 // Pattern of game declarations in the public profile. It's actually JSON
@@ -152,7 +155,7 @@ func GetGames(user User) (games map[string]*Game, err error) {
 		gameName := groups[2]
 		tags := []string{""}
 		imagePath := ""
-		games[gameId] = &Game{gameId, gameName, tags, imagePath}
+		games[gameId] = &Game{gameId, gameName, tags, imagePath, nil}
 	}
 
 	// Fetch game categories from local file.
@@ -181,7 +184,7 @@ func GetGames(user User) (games map[string]*Game, err error) {
 				// If for some reason it wasn't included in the profile, create a new
 				// entry for it now. Unfortunately we don't have a name.
 				gameName := ""
-				games[gameId] = &Game{gameId, gameName, []string{tag}, ""}
+				games[gameId] = &Game{gameId, gameName, []string{tag}, "", nil}
 			}
 		}
 	}
@@ -282,11 +285,24 @@ func getImageAlternatives(game *Game) (response *http.Response, fromSearch bool,
 func DownloadImage(game *Game, user User) (found bool, fromSearch bool, err error) {
 	gridDir := filepath.Join(user.Dir, "config", "grid")
 	filename := filepath.Join(gridDir, game.Id+".jpg")
+	backupFilename := filepath.Join(gridDir, game.Id+" (original).jpg")
 
 	game.ImagePath = filename
+	if _, err := os.Stat(backupFilename); err == nil {
+		imageBytes, err := ioutil.ReadFile(backupFilename)
+		game.ImageBytes = imageBytes
+		return true, false, err
+	}
+
 	if _, err := os.Stat(filename); err == nil {
-		// File already exists, skip it.
-		return true, false, nil
+		// There's an image, but not a backup. Load the image and back it up.
+		imageBytes, err := ioutil.ReadFile(filename)
+		if err != nil {
+			return true, false, err
+		}
+
+		game.ImageBytes = imageBytes
+		return true, false, ioutil.WriteFile(backupFilename, game.ImageBytes, 0666)
 	}
 
 	response, fromSearch, err := getImageAlternatives(game)
@@ -295,8 +311,13 @@ func DownloadImage(game *Game, user User) (found bool, fromSearch bool, err erro
 	}
 
 	imageBytes, err := ioutil.ReadAll(response.Body)
+	game.ImageBytes = imageBytes
 	response.Body.Close()
-	return true, fromSearch, ioutil.WriteFile(filename, imageBytes, 0666)
+	err = ioutil.WriteFile(filename, game.ImageBytes, 0666)
+	if err != nil {
+		return true, false, err
+	}
+	return true, fromSearch, ioutil.WriteFile(backupFilename, game.ImageBytes, 0666)
 }
 
 // Loads an image from a given path.
@@ -342,12 +363,7 @@ func LoadOverlays(dir string) (overlays map[string]image.Image, err error) {
 // Applies an overlay to the game image, depending on the category. The
 // resulting image is saved over the original.
 func ApplyOverlay(game *Game, overlays map[string]image.Image) (err error) {
-	if game.ImagePath == "" {
-		return nil
-	}
-
-	if _, err := os.Stat(game.ImagePath); err != nil {
-		// Game has no image, we have to skip it.
+	if game.ImagePath == "" || game.ImageBytes == nil {
 		return nil
 	}
 
@@ -360,7 +376,7 @@ func ApplyOverlay(game *Game, overlays map[string]image.Image) (err error) {
 			continue
 		}
 
-		gameImage, err := loadImage(game.ImagePath)
+		gameImage, _, err := image.Decode(bytes.NewBuffer(game.ImageBytes))
 		if err != nil {
 			return err
 		}
@@ -369,26 +385,15 @@ func ApplyOverlay(game *Game, overlays map[string]image.Image) (err error) {
 		draw.Draw(result, result.Bounds(), gameImage, image.ZP, draw.Src)
 		draw.Draw(result, result.Bounds(), overlayImage, image.Point{0, 0}, draw.Over)
 
-		ext := filepath.Ext(game.ImagePath)
-		backupPath := strings.TrimSuffix(game.ImagePath, ext) + " (original)" + ext
-		if _, err := os.Stat(backupPath); err != nil {
-			// Backup doesn't exist, create it.
-			err = os.Rename(game.ImagePath, backupPath)
-			if err != nil {
-				return err
-			}
-		}
-
-		resultFile, _ := os.Create(game.ImagePath)
-		defer resultFile.Close()
-
-		err = jpeg.Encode(resultFile, result, &jpeg.Options{90})
+		buf := new(bytes.Buffer)
+		err = jpeg.Encode(buf, result, &jpeg.Options{90})
 		if err != nil {
 			return err
 		}
+		game.ImageBytes = buf.Bytes()
 	}
 
-	return nil
+	return ioutil.WriteFile(game.ImagePath, game.ImageBytes, 0666)
 }
 
 // Returns the Steam installation directory in Windows. Should work for
