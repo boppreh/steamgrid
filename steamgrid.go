@@ -411,6 +411,11 @@ func GetSteamInstallation() (path string, err error) {
 		if _, err = os.Stat(linuxSteamDir); err == nil {
 			return linuxSteamDir, nil
 		}
+
+		linuxSteamDir = filepath.Join(currentUser.HomeDir, ".steam", "steam")
+		if _, err = os.Stat(linuxSteamDir); err == nil {
+			return linuxSteamDir, nil
+		}
 	}
 
 	programFiles86Dir := filepath.Join(os.Getenv("ProgramFiles(x86)"), "Steam")
@@ -440,6 +445,7 @@ func main() {
 		progress := make(chan int)
 
 		go goui.Progress("SteamGrid", descriptions, progress, func() { os.Exit(1) })
+
 		startApplication(descriptions, progress)
 	})
 }
@@ -484,6 +490,8 @@ func startApplication(descriptions chan string, progress chan int) {
 
 		i := 0
 		for _, game := range games {
+			fmt.Println(game.Name)
+
 			i++
 			progress <- i * 100 / len(games)
 			var name string
