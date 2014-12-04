@@ -26,7 +26,6 @@ Features
   it doesn't work for some reason with you, just drag and drop the steam folder
   onto the executable.
 - Detects all local Steam users and customizes their grid images individually.
-- Loads your game list from your public Steam profile (make sure you have one!)
 - Downloads grid images from two different servers, and falls back to a Google
   search as last resort (don't worry, it'll tell you if this happens).
 - Loads your categories from the Steam installation.
@@ -34,7 +33,7 @@ Features
   of the overlay file is the name of the category).
 - If you already have any customized images it'll use them and apply the
   overlay, but keeping a backup.
-- 100% fire and forget, no interaction required.
+- 100% fire and forget, no interaction required, and can cancel and retry at any moment.
 
 Something wrong?
 ----------------
