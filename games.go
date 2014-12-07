@@ -113,12 +113,10 @@ func addNonSteamGames(user User, games map[string]*Game) {
 		uniqueName := bytes.Join([][]byte{target, gameName}, []byte(""))
 		// Does IEEE CRC32 of target concatenated with gameName, then convert
 		// to 64bit Steam ID. No idea why Steam chose this operation.
-		gameId := strconv.FormatUint(uint64(crc32.ChecksumIEEE(uniqueName))<<32|0x02000000, 10)
+		top := uint64(crc32.ChecksumIEEE(uniqueName)) | 0x80000000
+		gameId := strconv.FormatUint(top<<32|0x02000000, 10)
 		game := Game{gameId, string(gameName), []string{}, "", nil}
 		games[gameId] = &game
-
-		// TODO: some problems when generating SteamID for games with changed
-		// labels. For some reason they didn't match.
 
 		tagsText := gameGroups[3]
 		for _, tagGroups := range tagsPattern.FindAllSubmatch(tagsText, -1) {
