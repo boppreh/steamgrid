@@ -66,8 +66,11 @@ func ApplyOverlay(game *Game, overlays map[string]image.Image) (applied bool, er
 
 	for _, tag := range game.Tags {
 		// Normalize tag name by lower-casing it and remove trailing "s" from
-		// plurals.
+		// plurals. Also, < and > are replaced with - because you can't have <
+		// and > in Windows paths.
 		tagName := strings.TrimRight(strings.ToLower(tag), "s")
+		tagName = strings.Replace(tagName, "<", "-", -1)
+		tagName = strings.Replace(tagName, ">", "-", -1)
 
 		overlayImage, ok := overlays[tagName]
 		if !ok {
