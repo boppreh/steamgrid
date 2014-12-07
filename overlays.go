@@ -54,14 +54,14 @@ func LoadOverlays(dir string) (overlays map[string]image.Image, err error) {
 
 // Applies an overlay to the game image, depending on the category. The
 // resulting image is saved over the original.
-func ApplyOverlay(game *Game, overlays map[string]image.Image) (err error) {
+func ApplyOverlay(game *Game, overlays map[string]image.Image) (applied bool, err error) {
 	if game.ImagePath == "" || game.ImageBytes == nil || len(game.Tags) == 0 {
-		return nil
+		return false, nil
 	}
 
 	gameImage, _, err := image.Decode(bytes.NewBuffer(game.ImageBytes))
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	for _, tag := range game.Tags {
@@ -78,6 +78,7 @@ func ApplyOverlay(game *Game, overlays map[string]image.Image) (err error) {
 		draw.Draw(result, result.Bounds(), gameImage, image.ZP, draw.Src)
 		draw.Draw(result, result.Bounds(), overlayImage, image.Point{0, 0}, draw.Over)
 		gameImage = result
+		applied = true
 	}
 
 	buf := new(bytes.Buffer)
@@ -87,8 +88,9 @@ func ApplyOverlay(game *Game, overlays map[string]image.Image) (err error) {
 		err = png.Encode(buf, gameImage)
 	}
 	if err != nil {
-		return err
+		return false, err
 	}
 	game.ImageBytes = buf.Bytes()
-	return ioutil.WriteFile(game.ImagePath, game.ImageBytes, 0666)
+	err = ioutil.WriteFile(game.ImagePath, game.ImageBytes, 0666)
+	return
 }

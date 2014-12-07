@@ -59,6 +59,8 @@ func startApplication(descriptions chan string, progress chan int) {
 		errorAndExit(errors.New("No users found at Steam/userdata. Have you used Steam before in this computer?"))
 	}
 
+	nOverlaysApplied := 0
+	nDownloaded := 0
 	notFounds := make([]*Game, 0)
 	searchFounds := make([]*Game, 0)
 
@@ -84,9 +86,12 @@ func startApplication(descriptions chan string, progress chan int) {
 			descriptions <- fmt.Sprintf("Processing %v (%v/%v)",
 				name, i, len(games))
 
-			found, fromSearch, err := DownloadImage(game, user)
+			downloaded, found, fromSearch, err := DownloadImage(game, user)
 			if err != nil {
 				errorAndExit(err)
+			}
+			if downloaded {
+				nDownloaded++
 			}
 			if !found {
 				notFounds = append(notFounds, game)
@@ -101,36 +106,35 @@ func startApplication(descriptions chan string, progress chan int) {
 				errorAndExit(err)
 			}
 
-			err = ApplyOverlay(game, overlays)
+			applied, err := ApplyOverlay(game, overlays)
 			if err != nil {
 				errorAndExit(err)
+			}
+			if applied {
+				nOverlaysApplied++
 			}
 		}
 	}
 
 	close(progress)
 
-	message := ""
-	if len(notFounds) == 0 && len(searchFounds) == 0 {
-		message += "All grid images downloaded and overlays applied!\n\n"
-	} else {
-		if len(searchFounds) >= 1 {
-			message += fmt.Sprintf("%v images were found with a Google search and may not be accurate:\n", len(searchFounds))
-			for _, game := range searchFounds {
-				message += fmt.Sprintf("* %v (steam id %v)\n", game.Name, game.Id)
-			}
-
-			message += "\n\n"
+	message := fmt.Sprintf("%v images downloaded and %v overlays applied.\n\n", nDownloaded, nOverlaysApplied)
+	if len(searchFounds) >= 1 {
+		message += fmt.Sprintf("%v images were found with a Google search and may not be accurate:\n", len(searchFounds))
+		for _, game := range searchFounds {
+			message += fmt.Sprintf("* %v (steam id %v)\n", game.Name, game.Id)
 		}
 
-		if len(notFounds) >= 1 {
-			message += fmt.Sprintf("%v images could not be found anywhere:\n", len(notFounds))
-			for _, game := range notFounds {
-				message += fmt.Sprintf("* %v (steam id %v)\n", game.Name, game.Id)
-			}
+		message += "\n\n"
+	}
 
-			message += "\n\n"
+	if len(notFounds) >= 1 {
+		message += fmt.Sprintf("%v images could not be found anywhere:\n", len(notFounds))
+		for _, game := range notFounds {
+			message += fmt.Sprintf("* %v (steam id %v)\n", game.Name, game.Id)
 		}
+
+		message += "\n\n"
 	}
 	message += "Open Steam in grid view to see the results!"
 

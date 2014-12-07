@@ -100,7 +100,7 @@ func getImageAlternatives(game *Game) (response *http.Response, fromSearch bool,
 // Downloads the grid image for a game into the user's grid directory. Returns
 // flags indicating if the operation succeeded and if the image downloaded was
 // from a search.
-func DownloadImage(game *Game, user User) (found bool, fromSearch bool, err error) {
+func DownloadImage(game *Game, user User) (downloaded bool, found bool, fromSearch bool, err error) {
 	gridDir := filepath.Join(user.Dir, "config", "grid")
 	jpgFilename := filepath.Join(gridDir, game.Id+".jpg")
 	pngFilename := filepath.Join(gridDir, game.Id+".png")
@@ -108,16 +108,16 @@ func DownloadImage(game *Game, user User) (found bool, fromSearch bool, err erro
 	if imageBytes, err := ioutil.ReadFile(jpgFilename); err == nil {
 		game.ImagePath = jpgFilename
 		game.ImageBytes = imageBytes
-		return true, false, nil
+		return false, true, false, nil
 	} else if imageBytes, err := ioutil.ReadFile(pngFilename); err == nil {
 		game.ImagePath = pngFilename
 		game.ImageBytes = imageBytes
-		return true, false, nil
+		return false, true, false, nil
 	}
 
 	response, fromSearch, err := getImageAlternatives(game)
 	if response == nil || err != nil {
-		return false, false, err
+		return false, false, false, err
 	}
 
 	imageBytes, err := ioutil.ReadAll(response.Body)
@@ -125,5 +125,5 @@ func DownloadImage(game *Game, user User) (found bool, fromSearch bool, err erro
 
 	game.ImageBytes = imageBytes
 	game.ImagePath = jpgFilename
-	return true, fromSearch, ioutil.WriteFile(game.ImagePath, game.ImageBytes, 0666)
+	return true, true, fromSearch, ioutil.WriteFile(game.ImagePath, game.ImageBytes, 0666)
 }
