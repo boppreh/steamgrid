@@ -5,46 +5,14 @@ package main
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"os/user"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/boppreh/go-ui"
 )
-
-// Restores all images that were saved as backup. This avoid double applying
-// overlays when running the program multiple times.
-func RestoreBackup(user User) {
-	baseDir := filepath.Join(user.Dir, "config", "grid")
-	entries, err := ioutil.ReadDir(baseDir)
-	if err != nil {
-		return
-	}
-
-	for _, file := range entries {
-		if strings.Contains(file.Name(), " (original)") {
-			backupPath := filepath.Join(baseDir, file.Name())
-			mainPath := strings.Replace(backupPath, " (original)", "", 1)
-			bytes, _ := ioutil.ReadFile(backupPath)
-			_ = ioutil.WriteFile(mainPath, bytes, 0666)
-		}
-	}
-}
-
-
-
-func StoreBackup(game *Game) error {
-	if game.ImagePath != "" && game.ImageBytes != nil {
-		backupPath := strings.Replace(game.ImagePath, ".", " (original).", 1)
-		return ioutil.WriteFile(backupPath, game.ImageBytes, 0666)
-	} else {
-		return nil
-	}
-}
 
 // Returns the Steam installation directory in Windows. Should work for
 // internationalized systems, 32 and 64 bits and users that moved their
@@ -172,7 +140,7 @@ func startApplication(descriptions chan string, progress chan int) {
 				searchFounds = append(searchFounds, game)
 			}
 
-			err = StoreBackup(game)
+			err = BackupGame(game)
 			if err != nil {
 				errorAndExit(err)
 			}
