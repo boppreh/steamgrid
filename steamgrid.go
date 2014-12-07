@@ -21,7 +21,7 @@ import (
 
 	"github.com/boppreh/go-ui"
 	"image/jpeg"
-	_ "image/png"
+	"image/png"
 )
 
 // User in the local steam installation.
@@ -192,6 +192,25 @@ func GetGames(user User) (games map[string]*Game, err error) {
 	return
 }
 
+// Restores all images that were saved as backup. This avoid double applying
+// overlays when running the program multiple times.
+func RestoreBackup(user User) {
+	baseDir := filepath.Join(user.Dir, "config", "grid")
+	entries, err := ioutil.ReadDir(baseDir)
+	if err != nil {
+		return
+	}
+
+	for _, file := range entries {
+		if strings.Contains(file.Name(), " (original)") {
+			backupPath := filepath.Join(baseDir, file.Name())
+			mainPath := strings.Replace(backupPath, " (original)", "", 1)
+			bytes, _ := ioutil.ReadFile(backupPath)
+			_ = ioutil.WriteFile(mainPath, bytes, 0666)
+		}
+	}
+}
+
 // When all else fails, Google it. Unfortunately this is a deprecated API and
 // may go offline at any time. Because this is last resort the number of
 // requests shouldn't trigger any punishment.
@@ -284,25 +303,17 @@ func getImageAlternatives(game *Game) (response *http.Response, fromSearch bool,
 // from a search.
 func DownloadImage(game *Game, user User) (found bool, fromSearch bool, err error) {
 	gridDir := filepath.Join(user.Dir, "config", "grid")
-	filename := filepath.Join(gridDir, game.Id+".jpg")
-	backupFilename := filepath.Join(gridDir, game.Id+" (original).jpg")
+	jpgFilename := filepath.Join(gridDir, game.Id+".jpg")
+	pngFilename := filepath.Join(gridDir, game.Id+".png")
 
-	game.ImagePath = filename
-	if _, err := os.Stat(backupFilename); err == nil {
-		imageBytes, err := ioutil.ReadFile(backupFilename)
+	if imageBytes, err := ioutil.ReadFile(jpgFilename); err == nil {
+		game.ImagePath = jpgFilename
 		game.ImageBytes = imageBytes
-		return true, false, err
-	}
-
-	if _, err := os.Stat(filename); err == nil {
-		// There's an image, but not a backup. Load the image and back it up.
-		imageBytes, err := ioutil.ReadFile(filename)
-		if err != nil {
-			return true, false, err
-		}
-
+		return true, false, nil
+	} else if imageBytes, err := ioutil.ReadFile(pngFilename); err == nil {
+		game.ImagePath = pngFilename
 		game.ImageBytes = imageBytes
-		return true, false, ioutil.WriteFile(backupFilename, game.ImageBytes, 0666)
+		return true, false, nil
 	}
 
 	response, fromSearch, err := getImageAlternatives(game)
@@ -311,13 +322,11 @@ func DownloadImage(game *Game, user User) (found bool, fromSearch bool, err erro
 	}
 
 	imageBytes, err := ioutil.ReadAll(response.Body)
-	game.ImageBytes = imageBytes
 	response.Body.Close()
-	err = ioutil.WriteFile(filename, game.ImageBytes, 0666)
-	if err != nil {
-		return true, false, err
-	}
-	return true, fromSearch, ioutil.WriteFile(backupFilename, game.ImageBytes, 0666)
+
+	game.ImageBytes = imageBytes
+	game.ImagePath = jpgFilename
+	return true, fromSearch, ioutil.WriteFile(game.ImagePath, game.ImageBytes, 0666)
 }
 
 // Loads an image from a given path.
@@ -363,12 +372,18 @@ func LoadOverlays(dir string) (overlays map[string]image.Image, err error) {
 // Applies an overlay to the game image, depending on the category. The
 // resulting image is saved over the original.
 func ApplyOverlay(game *Game, overlays map[string]image.Image) (err error) {
-	if game.ImagePath == "" || game.ImageBytes == nil {
+	if game.ImagePath == "" || game.ImageBytes == nil || len(game.Tags) == 0 {
 		return nil
 	}
 
+	gameImage, _, err := image.Decode(bytes.NewBuffer(game.ImageBytes))
+	if err != nil {
+		return err
+	}
+
 	for _, tag := range game.Tags {
-		// Normalize tag name by lower-casing it and remove trailing "s".
+		// Normalize tag name by lower-casing it and remove trailing "s" from
+		// plurals.
 		tagName := strings.TrimRight(strings.ToLower(tag), "s")
 
 		overlayImage, ok := overlays[tagName]
@@ -376,24 +391,33 @@ func ApplyOverlay(game *Game, overlays map[string]image.Image) (err error) {
 			continue
 		}
 
-		gameImage, _, err := image.Decode(bytes.NewBuffer(game.ImageBytes))
-		if err != nil {
-			return err
-		}
 
 		result := image.NewRGBA(gameImage.Bounds().Union(overlayImage.Bounds()))
 		draw.Draw(result, result.Bounds(), gameImage, image.ZP, draw.Src)
 		draw.Draw(result, result.Bounds(), overlayImage, image.Point{0, 0}, draw.Over)
-
-		buf := new(bytes.Buffer)
-		err = jpeg.Encode(buf, result, &jpeg.Options{90})
-		if err != nil {
-			return err
-		}
-		game.ImageBytes = buf.Bytes()
+		gameImage = result
 	}
 
+	buf := new(bytes.Buffer)
+	if strings.HasSuffix(game.ImagePath, "jpg") {
+		err = jpeg.Encode(buf, gameImage, &jpeg.Options{90})
+	} else if strings.HasSuffix(game.ImagePath, "png") {
+		err = png.Encode(buf, gameImage)
+	}
+	if err != nil {
+		return err
+	}
+	game.ImageBytes = buf.Bytes()
 	return ioutil.WriteFile(game.ImagePath, game.ImageBytes, 0666)
+}
+
+func StoreBackup(game *Game) error {
+	if game.ImagePath && game.ImageBytes {
+		backupPath := strings.Replace(game.ImagePath, ".", " (original).", 1)
+		return ioutil.WriteFile(backupPath, game.ImageBytes, 0666)
+	} else {
+		return nil
+	}
 }
 
 // Returns the Steam installation directory in Windows. Should work for
@@ -488,6 +512,8 @@ func startApplication(descriptions chan string, progress chan int) {
 	for _, user := range users {
 		descriptions <- "Loading games for " + user.Name
 
+		RestoreBackup(user)
+
 		games, err := GetGames(user)
 		if err != nil {
 			errorAndExit(err)
@@ -520,12 +546,16 @@ func startApplication(descriptions chan string, progress chan int) {
 				searchFounds = append(searchFounds, game)
 			}
 
+			err = StoreBackup(game)
+			if err != nil {
+				errorAndExit(err)
+			}
+
 			err = ApplyOverlay(game, overlays)
 			if err != nil {
 				errorAndExit(err)
 			}
 		}
-
 	}
 
 	close(progress)
