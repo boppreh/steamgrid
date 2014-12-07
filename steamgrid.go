@@ -67,10 +67,7 @@ func startApplication(descriptions chan string, progress chan int) {
 
 		RestoreBackup(user)
 
-		games, err := GetGames(user)
-		if err != nil {
-			errorAndExit(err)
-		}
+		games := GetGames(user)
 
 		i := 0
 		for _, game := range games {

@@ -6,11 +6,11 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"os/user"
 	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
-	"os/user"
 )
 
 // User in the local steam installation.

@@ -128,12 +128,12 @@ func addNonSteamGames(user User, games map[string]*Game) {
 
 // Returns all games from a given user, using both the public profile and local
 // files to gather the data. Returns a map of game by ID.
-func GetGames(user User) (games map[string]*Game, err error) {
-	games = make(map[string]*Game, 0)
+func GetGames(user User) map[string]*Game {
+	games := make(map[string]*Game, 0)
 
 	addGamesFromProfile(user, games)
 	addUnknownGames(user, games)
 	addNonSteamGames(user, games)
 
-	return
+	return games
 }
