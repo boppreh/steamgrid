@@ -2,9 +2,12 @@ package main
 
 import (
 	"io/ioutil"
+	"bytes"
 	"os"
 	"path/filepath"
 	"regexp"
+	"hash/crc32"
+	"strconv"
 )
 
 // A Steam game in a library. May or may not be installed.
@@ -47,9 +50,6 @@ func addGamesFromProfile(user User, games map[string]*Game) (err error) {
 	return
 }
 
-func addNonSteamGaems(user User, game map[string]*Game) {
-}
-
 // Loads the categories list. This finds the categories for the games loaded
 // from the profile and sometimes find new games, although without names.
 func addUnknownGames(user User, games map[string]*Game) {
@@ -89,25 +89,42 @@ func addUnknownGames(user User, games map[string]*Game) {
 }
 
 // Adds non-Steam games that have been registered locally.
+// This information is in the file config/shortcuts.vdf, in binary format.
+// It contains the non-Steam games with names, target (exe location) and
+// tags/categories. To create a grid image we must compute the Steam ID, which
+// is just crc32(target + label) + "02000000", using IEEE standard polynomials.
 func addNonSteamGames(user User, games map[string]*Game) {
-	// File that holds list of all non-Steam games.
-	file := filepath.Join(user.Dir, "760", "screenshots.vdf")
-	if _, err := os.Stat(file); err != nil {
-		// No custom games, skip this part.
+	shortcutsVdf := filepath.Join(user.Dir, "config", "shortcuts.vdf")
+	if _, err := os.Stat(shortcutsVdf); err != nil {
 		return
 	}
-	bytes, err := ioutil.ReadFile(file)
+	shortcutBytes, err := ioutil.ReadFile(shortcutsVdf)
 	if err != nil {
 		return
 	}
 
-	content := string(bytes)
-	// VDF pattern: "customid"		"name"
-	gamePattern := regexp.MustCompile(`"([0-9]+)"\s*"(.+?)"`)
-	for _, gameGroups := range gamePattern.FindAllStringSubmatch(content, -1) {
-		gameId := gameGroups[1]
-		name := gameGroups[2]
-		games[gameId] = &Game{gameId, name, []string{}, "", nil}
+	// The actual binary format is known, but using regexes is way easier than
+	// parsing the entire file. If I run into any problems I'll replace this.
+	gamePattern := regexp.MustCompile("appname\x00(.+?)\x00\x01exe\x00(.+?)\x00\x01.+?\x00tags\x00(.*?)\x08\x08")
+	tagsPattern := regexp.MustCompile("\\d\x00(.+?)\x00")
+	for _, gameGroups := range gamePattern.FindAllSubmatch(shortcutBytes, -1) {
+		gameName := gameGroups[1]
+		target := gameGroups[2]
+		uniqueName := bytes.Join([][]byte{target, gameName}, []byte(""))
+		// Does IEEE CRC32 of target concatenated with gameName, then convert
+		// to 64bit Steam ID. No idea why Steam chose this operation.
+		gameId := strconv.FormatUint(uint64(crc32.ChecksumIEEE(uniqueName)) << 32 | 0x02000000, 10)
+		game := Game{gameId, string(gameName), []string{}, "", nil}
+		games[gameId] = &game
+
+		// TODO: some problems when generating SteamID for games with changed
+		// labels. For some reason they didn't match.
+
+		tagsText := gameGroups[3]
+		for _, tagGroups := range tagsPattern.FindAllSubmatch(tagsText, -1) {
+			tag := tagGroups[1]
+			game.Tags = append(game.Tags, string(tag))
+		}
 	}
 }
 
