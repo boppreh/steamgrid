@@ -1,11 +1,11 @@
 # What is it? #
 
-Steam has a grid view for your games, and SteamGrid is a small program to
-enhance that option. It does three things:
+Steam has the Big Picture mode and grid view, but they are not perfect. SteamGrid is a small program to
+enhance them. It does three things:
 
-- Cache all grid images, so you can browse without internet access or that
+- Cache all game images, so you can browse without internet access or that
   annoying delay
-- Search, download and configure custom images for games that are missing it
+- Automagically search, download and set custom images for games that are missing it
 - Apply overlays based on your categories
 
 You run it once and it'll set up everything above, automatically. You can run
@@ -30,21 +30,22 @@ SteamGrid supports Windows and Linux (32 or 64bit), and even non-Steam games.
 
 # Features #
 
+- Grid images are used both in the grid view and Big Picture mode, and SteamGrid works on both.
 - Automatically detects Steam installation even in foreign language systems. If
-  it still doesn't work for you, just drag and drop the steam folder
+  it still doesn't work for you, just drag and drop the Steam installation folder
   onto the executable for a manual override.
 - Detects all local Steam users and customizes their grid images individually.
-- Downloads grid images from two different servers, and falls back to a Google
-  search as last resort (don't worry, it'll tell you if this happens).
-- Loads your categories from the Steam installation.
-- Applies transparent overlays based on the game category (make sure the name
+- Downloads images from two different servers, and falls back to a Google
+  search as last resort (don't worry, it'll tell you if that happens).
+- Loads your categories from the local Steam installation.
+- Applies transparent overlays based on each game categories (make sure the name
   of the overlay file is the name of the category).
 - If you already have any customized images it'll use them and apply the
   overlay, but keeping a backup.
 - Works just as well with non-Steam games.
 - Supports PNG and JPG images.
 - Supports games with multiple categories.
-- No installation required.
+- No installation required, just extract the zip and double click.
 - Works with Windows and Linux, 32 or 64 bit.
 - 100% fire and forget, no interaction required, and can cancel and retry at any moment.
 
