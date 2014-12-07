@@ -131,7 +131,7 @@ func startApplication(descriptions chan string, progress chan int) {
 	if len(notFounds) >= 1 {
 		message += fmt.Sprintf("%v images could not be found anywhere:\n", len(notFounds))
 		for _, game := range notFounds {
-			message += fmt.Sprintf("* %v (steam id %v)\n", game.Name, game.Id)
+			message += fmt.Sprintf("- %v (id %v)\n", game.Name, game.Id)
 		}
 
 		message += "\n\n"
