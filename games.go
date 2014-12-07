@@ -1,12 +1,12 @@
 package main
 
 import (
-	"io/ioutil"
 	"bytes"
+	"hash/crc32"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
-	"hash/crc32"
 	"strconv"
 )
 
@@ -113,7 +113,7 @@ func addNonSteamGames(user User, games map[string]*Game) {
 		uniqueName := bytes.Join([][]byte{target, gameName}, []byte(""))
 		// Does IEEE CRC32 of target concatenated with gameName, then convert
 		// to 64bit Steam ID. No idea why Steam chose this operation.
-		gameId := strconv.FormatUint(uint64(crc32.ChecksumIEEE(uniqueName)) << 32 | 0x02000000, 10)
+		gameId := strconv.FormatUint(uint64(crc32.ChecksumIEEE(uniqueName))<<32|0x02000000, 10)
 		game := Game{gameId, string(gameName), []string{}, "", nil}
 		games[gameId] = &game
 
