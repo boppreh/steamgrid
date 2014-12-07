@@ -25,7 +25,9 @@ SteamGrid supports Windows and Linux (32 or 64bit), and even non-Steam games.
 
 [![Processing games](http://i.imgur.com/yYe6Oew.png)](https://github.com/boppreh/steamgrid/releases/latest)
 [![Results](http://i.imgur.com/hyoYGnK.png)](https://github.com/boppreh/steamgrid/releases/latest)
-[![Steam screenshot with filled grid](http://i.imgur.com/abnqZ6C.png)](http://i.imgur.com/abnqZ6C.png)
+[![Grid view screenshot](http://i.imgur.com/abnqZ6C.png)](http://i.imgur.com/abnqZ6C.png)
+[![Big Picture screenshot](http://i.imgur.com/LCeEaQE.png)](http://i.imgur.com/LCeEaQE.png)
+
 
 
 # Features #
