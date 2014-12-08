@@ -63,6 +63,8 @@ func startApplication(descriptions chan string, progress chan int) {
 	nDownloaded := 0
 	notFounds := make([]*Game, 0)
 	searchFounds := make([]*Game, 0)
+	errors := make([]*Game, 0)
+	errorMessages := make([]string, 0)
 
 	for _, user := range users {
 		descriptions <- "Loading games for " + user.Name
@@ -108,7 +110,9 @@ func startApplication(descriptions chan string, progress chan int) {
 
 			applied, err := ApplyOverlay(game, overlays)
 			if err != nil {
-				errorAndExit(err)
+				print(err.Error(), "\n")
+				errors = append(errors, game)
+				errorMessages = append(errorMessages, err.Error())
 			}
 			if applied {
 				nOverlaysApplied++
@@ -136,6 +140,16 @@ func startApplication(descriptions chan string, progress chan int) {
 
 		message += "\n\n"
 	}
+
+	if len(errors) >= 1 {
+		message += fmt.Sprintf("%v images were found but had errors and could not be overlaid:\n", len(errors))
+		for i, game := range errors {
+			message += fmt.Sprintf("- %v (id %v) (%v)\n", game.Name, game.Id, errorMessages[i])
+		}
+
+		message += "\n\n"
+	}
+
 	message += "Open Steam in grid view to see the results!"
 
 	goui.Info("Results", message)
