@@ -38,6 +38,11 @@ func LoadOverlays(dir string) (overlays map[string]image.Image, err error) {
 	}
 
 	for _, file := range files {
+		// Skip non-image files like Thumbs.db.
+		if !strings.HasSuffix(file.Name(), "png") && !strings.HasSuffix(file.Name(), "jpg") {
+			continue
+		}
+
 		img, err := loadImage(filepath.Join(dir, file.Name()))
 		if err != nil {
 			return overlays, err
