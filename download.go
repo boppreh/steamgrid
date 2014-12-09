@@ -10,10 +10,11 @@ import (
 	"regexp"
 )
 
-// When all else fails, Google it. Unfortunately this is a deprecated API and
-// may go offline at any time. Because this is last resort the number of
-// requests shouldn't trigger any punishment.
-const googleSearchFormat = `https://ajax.googleapis.com/ajax/services/search/images?v=1.0&rsz=8&q=`
+// When all else fails, Google it. Uses the regular web interface. There are
+// two image search APIs, but one is deprecated and doesn't support exact size
+// matching, and the other requires an API key limited to 100 searches a day.
+// Notice num=1, so we get a single result and don't waste their processors.
+const googleSearchFormat = `https://www.google.com.br/search?tbs=isz%3Aex%2Ciszw%3A460%2Ciszh%3A215&tbm=isch&num=1&q=`
 
 // Returns the first steam grid image URL found by Google search of a given
 // game name.
@@ -22,8 +23,20 @@ func getGoogleImage(gameName string) (string, error) {
 		return "", nil
 	}
 
-	url := googleSearchFormat + url.QueryEscape("steam grid OR header"+gameName)
-	response, err := http.Get(url)
+	url := googleSearchFormat + url.QueryEscape(gameName)
+
+	client := &http.Client{}
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return "", err
+	}
+
+	// If we don't set an user agent, Google will block us because we are a
+	// bot. If we set something like "SteamGrid Image Search" it'll work, but
+	// Google will serve a simple HTML page without direct image links.
+	// So we have to lie.
+	req.Header.Set("User-Agent", "Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.71 Safari/537.36")
+	response, err := client.Do(req)
 	if err != nil {
 		return "", err
 	}
@@ -33,9 +46,8 @@ func getGoogleImage(gameName string) (string, error) {
 		return "", err
 	}
 	response.Body.Close()
-	// Again, we could parse JSON. This may be a little too lazy, the pattern
-	// is very loose. The order could be wrong, for example.
-	pattern := regexp.MustCompile(`"width":"460","height":"215",[^}]+"unescapedUrl":"(.+?)"`)
+
+	pattern := regexp.MustCompile(`imgurl=(.+?\.(jpg|png))&amp;imgrefurl=`)
 	matches := pattern.FindStringSubmatch(string(responseBytes))
 	if len(matches) >= 1 {
 		return matches[1], nil
