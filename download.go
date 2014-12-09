@@ -13,8 +13,7 @@ import (
 // When all else fails, Google it. Uses the regular web interface. There are
 // two image search APIs, but one is deprecated and doesn't support exact size
 // matching, and the other requires an API key limited to 100 searches a day.
-// Notice num=1, so we get a single result and don't waste their processors.
-const googleSearchFormat = `https://www.google.com.br/search?tbs=isz%3Aex%2Ciszw%3A460%2Ciszh%3A215&tbm=isch&num=1&q=`
+const googleSearchFormat = `https://www.google.com.br/search?tbs=isz%3Aex%2Ciszw%3A460%2Ciszh%3A215&tbm=isch&num=5&q=`
 
 // Returns the first steam grid image URL found by Google search of a given
 // game name.
