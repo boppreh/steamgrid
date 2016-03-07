@@ -1,6 +1,6 @@
 # What is it? #
 
-Steam has the Big Picture mode and grid view, but they are not perfect. SteamGrid is a small program to
+Steam has the Big Picture mode and grid view, but they are not perfect. SteamGrid is a small standalone program to
 enhance them. It does three things:
 
 - Cache all game images, so you can browse without internet access or that
@@ -13,22 +13,24 @@ again when you get more games or want to update the category overlays.
 
 SteamGrid supports Windows and Linux (32 or 64bit), and even non-Steam games.
 
+# Download #
+
+[steamgrid-windows.zip (2.5MB)](https://github.com/boppreh/steamgrid/releases/download/v1.3.0/steamgrid-windows.zip)
+
+[steamgrid-linux.zip (1.9MB)](https://github.com/boppreh/steamgrid/releases/download/v1.3.0/steamgrid-linux.zip)
 
 # How to use #
 
-1. [Download](https://github.com/boppreh/steamgrid/releases/latest) and extract the zip wherever.
+1. Download the [latest version](https://github.com/boppreh/steamgrid/releases/latest) and extract the zip wherever.
 2. *(optional)* Name the overlays after your categories. So if you have a category "Games I Love", put a nice little heart overlay there named "games i love.png". You can rename the defaults that came with the zip or get new ones at [/r/steamgrid](http://www.reddit.com/r/steamgrid/wiki/overlays).
-3. Run `steamgrid`, wait a few seconds and close the window. No, really, it's all automatic. Not a single keypress required.
-4. Open Steam in grid view and check the results.
+3. Run `steamgrid` and wait. No, really, it's all automatic. Not a single keypress required.
+4. Read the report and open Steam in grid view to check the results.
 
 ---
 
-[![Processing games](http://i.imgur.com/yYe6Oew.png)](https://github.com/boppreh/steamgrid/releases/latest)
-[![Results](http://i.imgur.com/hyoYGnK.png)](https://github.com/boppreh/steamgrid/releases/latest)
+[![Results](https://i.imgur.com/QBHZVNx.png)](https://github.com/boppreh/steamgrid/releases/latest)
 [![Grid view screenshot](http://i.imgur.com/abnqZ6C.png)](http://i.imgur.com/abnqZ6C.png)
 [![Big Picture screenshot](http://i.imgur.com/gv7xDda.png)](http://i.imgur.com/gv7xDda.png)
-
-
 
 # Features #
 
@@ -55,9 +57,8 @@ SteamGrid supports Windows and Linux (32 or 64bit), and even non-Steam games.
 
 - **Fails to find steam location**: You can drag and drop the Steam installation folder (not the library!) into `steamgrid.exe` for a manual override.
 - **A few images were not found**: Some images are hard to find. The program may miss a game, especially betas, prototypes and tests, but you can set an image manually through the Steam client (right click > `Set Custom Image`). Run `steamgrid` again to apply the overlays. If you know a good source of images, drop me a message.
-- **Can't load profile**: make sure you are connected to the internet.
 - **No overlays found**: make sure you put your overlays inside the `overlays by category` folder, and it's near the program itself. This error means absolutely no overlays were found, without even taking your categories names into consideration.
 - **It didn't apply any overlays**: ensure the overlay file name matches your category name, including possible punctuation (differences in caps are ignored). For example `favorites.png` is used for the `Favorites` category.
-- **I'm worried this is a virus**: I work with security, so no offense taken from a little paranoia. The complete source code is provided at this [Github repo](https://github.com/boppreh/steamgrid). If you are worried the binaries don't match the source, you can install Go on your machine and run the sources directly. The only files it touches are the ones inside `Steam/userdata` and the `overlays by category` folder. It does connect to the internet, but only to fetch game names from you Steam profile and download images into the Steam's grid image folder. Nothing is installed or saved in the Windows registry, and aside from images downloaded it should leave the computer exactly as it found.
+- **I'm worried this is a virus**: I work with security, so no offense taken from a little paranoia. The complete source code is provided at this [Github repo](https://github.com/boppreh/steamgrid). If you are worried the binaries don't match the source, you can install Go on your machine and run the sources directly. All it does is save images inside `Steam/userdata/ID/config/grid`. It does connect to the internet, but only to fetch game names from you Steam profile and download images into the Steam's grid image folder. Nothing is installed or saved in the Windows registry, and aside from images downloaded it should leave the computer exactly as it found.
 
 If you encounter any problems please [open an issue](https://github.com/boppreh/steamgrid/issues/new). All critics and suggestions are welcome.
