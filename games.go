@@ -146,7 +146,6 @@ func GetGames(user User) map[string]*Game {
 		".jpg",
 		".jpeg",
 		".png",
-		".gif",
 	}
 
 	// Load existing and backup images.
@@ -156,7 +155,7 @@ func GetGames(user User) map[string]*Game {
 			imagePath := filepath.Join(gridDir, game.Id+suffix)
 			imageBytes, err := ioutil.ReadFile(imagePath)
 			if err == nil {
-				game.ImagePath = filepath.Join(gridDir, game.Id+filepath.Ext(game.ImagePath))
+				game.ImagePath = filepath.Join(gridDir, game.Id+filepath.Ext(suffix))
 				game.ImageBytes = imageBytes
 				if strings.HasPrefix(suffix, " (original)") {
 					game.ImageSource = "backup"
