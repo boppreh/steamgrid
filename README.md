@@ -1,23 +1,20 @@
 # What is it? #
 
-Steam has the Big Picture mode and grid view, but they are not perfect. SteamGrid is a small standalone program to
-enhance them. It does three things:
+**SteamGrid** is a small standalone program to enhance Steam's grid view and Big Picture. It does three things:
 
 - Cache all game images, so you can browse without internet access or that
-  annoying delay
-- Automagically search, download and set custom images for games that are missing it
-- Apply overlays based on your categories
+  annoying delay.
+- Automagically search, download and set custom images for games that are missing it, like non-Steam games.
+- Apply overlays based on your categories.
 
-You run it once and it'll set up everything above, automatically. You can run
+You run it once and it'll set up everything above, automatically, keeping your existing custom images. You can run
 again when you get more games or want to update the category overlays.
-
-SteamGrid supports Windows and Linux (32 or 64bit), and even non-Steam games.
 
 # Download #
 
-[steamgrid-windows.zip (2.5MB)](https://github.com/boppreh/steamgrid/releases/download/v1.3.0/steamgrid-windows.zip)
+[**steamgrid-windows.zip (2.5MB)**](https://github.com/boppreh/steamgrid/releases/download/v1.3.0/steamgrid-windows.zip)
 
-[steamgrid-linux.zip (1.9MB)](https://github.com/boppreh/steamgrid/releases/download/v1.3.0/steamgrid-linux.zip)
+[**steamgrid-linux.zip (1.9MB)**](https://github.com/boppreh/steamgrid/releases/download/v1.3.0/steamgrid-linux.zip)
 
 # How to use #
 
