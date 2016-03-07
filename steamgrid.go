@@ -15,7 +15,9 @@ import (
 
 // Prints an error and quits.
 func errorAndExit(err error) {
-	panic(err.Error())
+	fmt.Println(err.Error())
+	bufio.NewReader(os.Stdin).ReadBytes('\n')
+	os.Exit(0)
 }
 
 func main() {
@@ -32,7 +34,7 @@ func startApplication() {
 	if len(overlays) == 0 {
 		// I'm trying to use a message box here, but for some reason the
 		// message appears twice and there's an error a closed channel.
-		fmt.Println("No overlays", "No category overlays found. You can put overlay images in the folder 'overlays by category', where the filename is the game category.\n\nContinuing without overlays...")
+		fmt.Println("No category overlays found. You can put overlay images in the folder 'overlays by category', where the filename is the game category.\n\nContinuing without overlays...")
 	}
 
 	fmt.Println("Looking for Steam directory...")

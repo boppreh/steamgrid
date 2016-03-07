@@ -147,5 +147,5 @@ func GetSteamInstallation() (path string, err error) {
 		return programFilesDir, nil
 	}
 
-	return "", errors.New("Could not find Steam installation folder. You can drag and drop the Steam folder into `steamgrid.exe` for a manual override.")
+	return "", errors.New("Could not find Steam installation folder. You can drag and drop the Steam folder into `steamgrid.exe` or call `steamgrid STEAMPATH` for a manual override.")
 }
