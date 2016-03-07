@@ -3,6 +3,7 @@
 package main
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
 	"net/http"
@@ -139,5 +140,7 @@ func startApplication() {
 		fmt.Printf("\n\n")
 	}
 
-	fmt.Printf("Open Steam in grid view to see the results!")
+	fmt.Println("Open Steam in grid view to see the results!\n\nPress enter to close.")
+
+	bufio.NewReader(os.Stdin).ReadBytes('\n')
 }
