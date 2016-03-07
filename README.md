@@ -25,7 +25,7 @@ again when you get more games or want to update the category overlays.
 
 ---
 
-[![Results](https://i.imgur.com/QBHZVNx.png)](https://github.com/boppreh/steamgrid/releases/latest)
+[![Results](https://i.imgur.com/HiBCe7p.png)](https://i.imgur.com/HiBCe7p.png)
 [![Grid view screenshot](http://i.imgur.com/abnqZ6C.png)](http://i.imgur.com/abnqZ6C.png)
 [![Big Picture screenshot](http://i.imgur.com/gv7xDda.png)](http://i.imgur.com/gv7xDda.png)
 
