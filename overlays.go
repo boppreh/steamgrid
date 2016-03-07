@@ -37,9 +37,14 @@ func LoadOverlays(dir string) (overlays map[string]image.Image, err error) {
 		return
 	}
 
+	imageExtensions := []string{"png", "jpg", "jpeg", "gif"}
+
 	for _, file := range files {
-		// Skip non-image files like Thumbs.db.
-		if !strings.HasSuffix(file.Name(), "png") && !strings.HasSuffix(file.Name(), "jpg") {
+		isImage := false
+		for _, extension := range imageExtensions {
+			isImage = isImage || strings.HasSuffix(file.Name(), extension)
+		}
+		if !isImage {
 			continue
 		}
 
@@ -71,11 +76,12 @@ func ApplyOverlay(game *Game, overlays map[string]image.Image) (applied bool, er
 
 	for _, tag := range game.Tags {
 		// Normalize tag name by lower-casing it and remove trailing "s" from
-		// plurals. Also, < and > are replaced with - because you can't have <
-		// and > in Windows paths.
+		// plurals. Also, <, > and / are replaced with - because you can't have
+		// them in Windows paths.
 		tagName := strings.TrimRight(strings.ToLower(tag), "s")
 		tagName = strings.Replace(tagName, "<", "-", -1)
 		tagName = strings.Replace(tagName, ">", "-", -1)
+		tagName = strings.Replace(tagName, "/", "-", -1)
 
 		overlayImage, ok := overlays[tagName]
 		if !ok {

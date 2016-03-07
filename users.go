@@ -22,7 +22,7 @@ type User struct {
 }
 
 // Used to convert between SteamId32 and SteamId64.
-const idConversionConstant = 76561197960265728
+const idConversionConstant = 0x110000100000000
 
 // Given the Steam installation dir (NOT the library!), returns all users in
 // this computer.
