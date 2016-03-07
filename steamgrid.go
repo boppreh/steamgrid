@@ -65,7 +65,7 @@ func startApplication() {
 		i := 0
 		for _, game := range games {
 			i += 1
-			
+
 			var name string
 			if game.Name != "" {
 				name = game.Name
