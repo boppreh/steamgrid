@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strconv"
+	"strings"
 )
 
 // A Steam game in a library. May or may not be installed.
@@ -22,6 +23,8 @@ type Game struct {
 	ImagePath string
 	// Raw bytes of the encoded image (usually jpg).
 	ImageBytes []byte
+	// Description of where the image was found (backup, official, search).
+	ImageSource string
 }
 
 // Pattern of game declarations in the public profile. It's actually JSON
@@ -44,7 +47,7 @@ func addGamesFromProfile(user User, games map[string]*Game) (err error) {
 		gameName := groups[2]
 		tags := []string{""}
 		imagePath := ""
-		games[gameId] = &Game{gameId, gameName, tags, imagePath, nil}
+		games[gameId] = &Game{gameId, gameName, tags, imagePath, nil, ""}
 	}
 
 	return
@@ -82,7 +85,7 @@ func addUnknownGames(user User, games map[string]*Game) {
 				// If for some reason it wasn't included in the profile, create a new
 				// entry for it now. Unfortunately we don't have a name.
 				gameName := ""
-				games[gameId] = &Game{gameId, gameName, []string{tag}, "", nil}
+				games[gameId] = &Game{gameId, gameName, []string{tag}, "", nil, ""}
 			}
 		}
 	}
@@ -115,7 +118,7 @@ func addNonSteamGames(user User, games map[string]*Game) {
 		// to 64bit Steam ID. No idea why Steam chose this operation.
 		top := uint64(crc32.ChecksumIEEE(uniqueName)) | 0x80000000
 		gameId := strconv.FormatUint(top<<32|0x02000000, 10)
-		game := Game{gameId, string(gameName), []string{}, "", nil}
+		game := Game{gameId, string(gameName), []string{}, "", nil, ""}
 		games[gameId] = &game
 
 		tagsText := gameGroups[3]
@@ -134,6 +137,37 @@ func GetGames(user User) map[string]*Game {
 	addGamesFromProfile(user, games)
 	addUnknownGames(user, games)
 	addNonSteamGames(user, games)
+
+	imageExtensions := []string{
+		" (original).jpg",
+		" (original).png",
+		".jpg",
+		".jpeg",
+		".png",
+		".gif",
+	}
+
+	// Load existing and backup images.
+	for _, game := range games {
+		gridDir := filepath.Join(user.Dir, "config", "grid")
+		for _, extension := range imageExtensions {
+			imagePath := filepath.Join(gridDir, game.Id+extension)
+			imageBytes, err := ioutil.ReadFile(imagePath)
+			if err == nil {
+				game.ImagePath = imagePath
+				game.ImageBytes = imageBytes
+				if strings.HasPrefix(" (original)", extension) {
+					game.ImageSource = "backup"
+				} else {
+					game.ImageSource = "existing"
+				}
+				break
+			}
+		}
+		if game.ImageBytes == nil {
+			game.ImagePath = filepath.Join(gridDir, game.Id+".jpg")
+		}
+	}
 
 	return games
 }

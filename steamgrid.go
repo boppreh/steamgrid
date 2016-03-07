@@ -72,22 +72,27 @@ func startApplication() {
 			} else {
 				name = "unknown game with id " + game.Id
 			}
-			fmt.Printf("Processing %v (%v/%v)\n", name, i, len(games))
+			fmt.Printf("Processing %v (%v/%v)", name, i, len(games))
 
-			downloaded, found, fromSearch, err := DownloadImage(game, user)
-			if err != nil {
-				errorAndExit(err)
+			if game.ImageBytes == nil {
+				err := DownloadImage(game)
+				if err != nil {
+					errorAndExit(err)
+				}
+				if game.ImageBytes != nil {
+					nDownloaded++
+				} else {
+					notFounds = append(notFounds, game)
+					fmt.Printf(" not found\n")
+					// Game has no image, skip it.
+					continue
+				}
+				if game.ImageSource == "search" {
+					searchFounds = append(searchFounds, game)
+				}
 			}
-			if downloaded {
-				nDownloaded++
-			}
-			if !found {
-				notFounds = append(notFounds, game)
-				continue
-			}
-			if fromSearch {
-				searchFounds = append(searchFounds, game)
-			}
+
+			fmt.Printf(" found from %v\n", game.ImageSource)
 
 			err = BackupGame(game)
 			if err != nil {
@@ -106,7 +111,7 @@ func startApplication() {
 		}
 	}
 
-	fmt.Printf("%v images downloaded and %v overlays applied.\n\n", nDownloaded, nOverlaysApplied)
+	fmt.Printf("\n\n%v images downloaded and %v overlays applied.\n\n", nDownloaded, nOverlaysApplied)
 	if len(searchFounds) >= 1 {
 		fmt.Printf("%v images were found with a Google search and may not be accurate:\n", len(searchFounds))
 		for _, game := range searchFounds {
