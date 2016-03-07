@@ -138,7 +138,9 @@ func GetGames(user User) map[string]*Game {
 	addUnknownGames(user, games)
 	addNonSteamGames(user, games)
 
-	imageExtensions := []string{
+	suffixes := []string{
+		" (original)..jpg", // Mistakes were made, own up to them.
+		" (original)..png",
 		" (original).jpg",
 		" (original).png",
 		".jpg",
@@ -150,16 +152,16 @@ func GetGames(user User) map[string]*Game {
 	// Load existing and backup images.
 	for _, game := range games {
 		gridDir := filepath.Join(user.Dir, "config", "grid")
-		for _, extension := range imageExtensions {
-			imagePath := filepath.Join(gridDir, game.Id+extension)
+		for _, suffix := range suffixes {
+			imagePath := filepath.Join(gridDir, game.Id+suffix)
 			imageBytes, err := ioutil.ReadFile(imagePath)
 			if err == nil {
-				game.ImagePath = imagePath
+				game.ImagePath = filepath.Join(gridDir, game.Id+filepath.Ext(game.ImagePath))
 				game.ImageBytes = imageBytes
-				if strings.HasPrefix(" (original)", extension) {
+				if strings.HasPrefix(suffix, " (original)") {
 					game.ImageSource = "backup"
 				} else {
-					game.ImageSource = "existing"
+					game.ImageSource = "manual customization"
 				}
 				break
 			}
