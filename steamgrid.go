@@ -6,6 +6,7 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -59,8 +60,6 @@ func startApplication() {
 	for _, user := range users {
 		fmt.Println("Loading games for " + user.Name)
 
-		RestoreBackup(user)
-
 		games := GetGames(user)
 
 		i := 0
@@ -108,6 +107,11 @@ func startApplication() {
 			}
 			if applied {
 				nOverlaysApplied++
+			}
+
+			err = ioutil.WriteFile(game.ImagePath, game.ImageBytes, 0666)
+			if err != nil {
+				fmt.Printf("Failed to write image for %v because: %v\n", game.Name, err.Error())
 			}
 		}
 	}

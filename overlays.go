@@ -95,6 +95,10 @@ func ApplyOverlay(game *Game, overlays map[string]image.Image) (applied bool, er
 		applied = true
 	}
 
+	if !applied {
+		return false, nil
+	}
+
 	buf := new(bytes.Buffer)
 	if strings.HasSuffix(game.ImagePath, "jpg") {
 		err = jpeg.Encode(buf, gameImage, &jpeg.Options{90})
@@ -105,6 +109,5 @@ func ApplyOverlay(game *Game, overlays map[string]image.Image) (applied bool, er
 		return false, err
 	}
 	game.ImageBytes = buf.Bytes()
-	err = ioutil.WriteFile(game.ImagePath, game.ImageBytes, 0666)
-	return
+	return true, nil
 }
