@@ -106,35 +106,33 @@ func startApplication() {
 		}
 	}
 
-	message := fmt.Sprintf("%v images downloaded and %v overlays applied.\n\n", nDownloaded, nOverlaysApplied)
+	fmt.Printf("%v images downloaded and %v overlays applied.\n\n", nDownloaded, nOverlaysApplied)
 	if len(searchFounds) >= 1 {
-		message += fmt.Sprintf("%v images were found with a Google search and may not be accurate:\n", len(searchFounds))
+		fmt.Printf("%v images were found with a Google search and may not be accurate:\n", len(searchFounds))
 		for _, game := range searchFounds {
-			message += fmt.Sprintf("* %v (steam id %v)\n", game.Name, game.Id)
+			fmt.Printf("* %v (steam id %v)\n", game.Name, game.Id)
 		}
 
-		message += "\n\n"
+		fmt.Printf("\n\n")
 	}
 
 	if len(notFounds) >= 1 {
-		message += fmt.Sprintf("%v images could not be found anywhere:\n", len(notFounds))
+		fmt.Printf("%v images could not be found anywhere:\n", len(notFounds))
 		for _, game := range notFounds {
-			message += fmt.Sprintf("- %v (id %v)\n", game.Name, game.Id)
+			fmt.Printf("- %v (id %v)\n", game.Name, game.Id)
 		}
 
-		message += "\n\n"
+		fmt.Printf("\n\n")
 	}
 
 	if len(errors) >= 1 {
-		message += fmt.Sprintf("%v images were found but had errors and could not be overlaid:\n", len(errors))
+		fmt.Printf("%v images were found but had errors and could not be overlaid:\n", len(errors))
 		for i, game := range errors {
-			message += fmt.Sprintf("- %v (id %v) (%v)\n", game.Name, game.Id, errorMessages[i])
+			fmt.Printf("- %v (id %v) (%v)\n", game.Name, game.Id, errorMessages[i])
 		}
 
-		message += "\n\n"
+		fmt.Printf("\n\n")
 	}
 
-	message += "Open Steam in grid view to see the results!"
-
-	fmt.Println(message)
+	fmt.Printf("Open Steam in grid view to see the results!")
 }
