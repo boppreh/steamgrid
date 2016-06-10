@@ -49,9 +49,8 @@ func getGoogleImage(gameName string) (string, error) {
 	matches := pattern.FindStringSubmatch(string(responseBytes))
 	if len(matches) >= 1 {
 		return matches[1], nil
-	} else {
-		return "", nil
 	}
+	return "", nil
 }
 
 // Tries to fetch a URL, returning the response only if it was positive.
@@ -73,23 +72,23 @@ func tryDownload(url string) (*http.Response, error) {
 }
 
 // Primary URL for downloading grid images.
-const akamaiUrlFormat = `https://steamcdn-a.akamaihd.net/steam/apps/%v/header.jpg`
+const akamaiURLFormat = `https://steamcdn-a.akamaihd.net/steam/apps/%v/header.jpg`
 
 // The subreddit mentions this as primary, but I've found Akamai to contain
 // more images and answer faster.
-const steamCdnUrlFormat = `http://cdn.steampowered.com/v/gfx/apps/%v/header.jpg`
+const steamCdnURLFormat = `http://cdn.steampowered.com/v/gfx/apps/%v/header.jpg`
 
 // Tries to load the grid image for a game from a number of alternative
 // sources. Returns the final response received and a flag indicating if it was
 // from a Google search (useful because we want to log the lower quality
 // images).
 func getImageAlternatives(game *Game) (response *http.Response, fromSearch bool, err error) {
-	response, err = tryDownload(fmt.Sprintf(akamaiUrlFormat, game.Id))
+	response, err = tryDownload(fmt.Sprintf(akamaiURLFormat, game.Id))
 	if err == nil && response != nil {
 		return
 	}
 
-	response, err = tryDownload(fmt.Sprintf(steamCdnUrlFormat, game.Id))
+	response, err = tryDownload(fmt.Sprintf(steamCdnURLFormat, game.Id))
 	if err == nil && response != nil {
 		return
 	}
@@ -107,7 +106,7 @@ func getImageAlternatives(game *Game) (response *http.Response, fromSearch bool,
 	return nil, false, nil
 }
 
-// Tries to download the game images, saving it in game.ImageBytes. Returns
+// DownloadImage tries to download the game images, saving it in game.ImageBytes. Returns
 // flags indicating if the operation succeeded and if the image downloaded was
 // from a search.
 func DownloadImage(game *Game) error {
