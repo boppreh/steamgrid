@@ -24,7 +24,7 @@ func loadImage(path string) (img image.Image, err error) {
 	return
 }
 
-// Loads the overlays from the given dir, returning a map of name -> image.
+// LoadOverlays from the given dir, returning a map of name -> image.
 func LoadOverlays(dir string) (overlays map[string]image.Image, err error) {
 	overlays = make(map[string]image.Image, 0)
 
@@ -62,7 +62,7 @@ func LoadOverlays(dir string) (overlays map[string]image.Image, err error) {
 	return
 }
 
-// Applies an overlay to the game image, depending on the category. The
+// ApplyOverlay to the game image, depending on the category. The
 // resulting image is saved over the original.
 func ApplyOverlay(game *Game, overlays map[string]image.Image) (applied bool, err error) {
 	if game.ImagePath == "" || game.ImageBytes == nil || len(game.Tags) == 0 {
