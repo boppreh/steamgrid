@@ -11,10 +11,10 @@ import (
 	"strings"
 )
 
-// A Steam game in a library. May or may not be installed.
+// Game in a steam library. May or may not be installed.
 type Game struct {
 	// Official Steam id.
-	Id string
+	ID string
 	// Warning, may contain Unicode characters.
 	Name string
 	// Tags, including user-created category and Steam's "Favorite" tag.
@@ -43,11 +43,11 @@ func addGamesFromProfile(user User, games map[string]*Game) (err error) {
 	// Fetch game list from public profile.
 	pattern := regexp.MustCompile(profileGamePattern)
 	for _, groups := range pattern.FindAllStringSubmatch(profile, -1) {
-		gameId := groups[1]
+		gameID := groups[1]
 		gameName := groups[2]
 		tags := []string{""}
 		imagePath := ""
-		games[gameId] = &Game{gameId, gameName, tags, imagePath, nil, ""}
+		games[gameID] = &Game{gameID, gameName, tags, imagePath, nil, ""}
 	}
 
 	return
@@ -72,20 +72,20 @@ func addUnknownGames(user User, games map[string]*Game) {
 	gamePattern := regexp.MustCompile(`"([0-9]+)"\s*{[^}]+?"tags"\s*{([^}]+?)}`)
 	tagsPattern := regexp.MustCompile(`"[0-9]+"\s*"(.+?)"`)
 	for _, gameGroups := range gamePattern.FindAllStringSubmatch(sharedConf, -1) {
-		gameId := gameGroups[1]
+		gameID := gameGroups[1]
 		tagsText := gameGroups[2]
 
 		for _, tagGroups := range tagsPattern.FindAllStringSubmatch(tagsText, -1) {
 			tag := tagGroups[1]
 
-			game, ok := games[gameId]
+			game, ok := games[gameID]
 			if ok {
 				game.Tags = append(game.Tags, tag)
 			} else {
 				// If for some reason it wasn't included in the profile, create a new
 				// entry for it now. Unfortunately we don't have a name.
 				gameName := ""
-				games[gameId] = &Game{gameId, gameName, []string{tag}, "", nil, ""}
+				games[gameID] = &Game{gameID, gameName, []string{tag}, "", nil, ""}
 			}
 		}
 	}
@@ -117,9 +117,9 @@ func addNonSteamGames(user User, games map[string]*Game) {
 		// Does IEEE CRC32 of target concatenated with gameName, then convert
 		// to 64bit Steam ID. No idea why Steam chose this operation.
 		top := uint64(crc32.ChecksumIEEE(uniqueName)) | 0x80000000
-		gameId := strconv.FormatUint(top<<32|0x02000000, 10)
-		game := Game{gameId, string(gameName), []string{}, "", nil, ""}
-		games[gameId] = &game
+		gameID := strconv.FormatUint(top<<32|0x02000000, 10)
+		game := Game{gameID, string(gameName), []string{}, "", nil, ""}
+		games[gameID] = &game
 
 		tagsText := gameGroups[3]
 		for _, tagGroups := range tagsPattern.FindAllSubmatch(tagsText, -1) {
@@ -129,7 +129,7 @@ func addNonSteamGames(user User, games map[string]*Game) {
 	}
 }
 
-// Returns all games from a given user, using both the public profile and local
+// GetGames returns all games from a given user, using both the public profile and local
 // files to gather the data. Returns a map of game by ID.
 func GetGames(user User) map[string]*Game {
 	games := make(map[string]*Game, 0)
@@ -152,10 +152,10 @@ func GetGames(user User) map[string]*Game {
 	for _, game := range games {
 		gridDir := filepath.Join(user.Dir, "config", "grid")
 		for _, suffix := range suffixes {
-			imagePath := filepath.Join(gridDir, game.Id+suffix)
+			imagePath := filepath.Join(gridDir, game.ID+suffix)
 			imageBytes, err := ioutil.ReadFile(imagePath)
 			if err == nil {
-				game.ImagePath = filepath.Join(gridDir, game.Id+filepath.Ext(suffix))
+				game.ImagePath = filepath.Join(gridDir, game.ID+filepath.Ext(suffix))
 				game.ImageBytes = imageBytes
 				if strings.HasPrefix(suffix, " (original)") {
 					game.ImageSource = "backup"
@@ -166,7 +166,7 @@ func GetGames(user User) map[string]*Game {
 			}
 		}
 		if game.ImageBytes == nil {
-			game.ImagePath = filepath.Join(gridDir, game.Id+".jpg")
+			game.ImagePath = filepath.Join(gridDir, game.ID+".jpg")
 		}
 	}
 

@@ -83,12 +83,12 @@ const steamCdnURLFormat = `http://cdn.steampowered.com/v/gfx/apps/%v/header.jpg`
 // from a Google search (useful because we want to log the lower quality
 // images).
 func getImageAlternatives(game *Game) (response *http.Response, fromSearch bool, err error) {
-	response, err = tryDownload(fmt.Sprintf(akamaiURLFormat, game.Id))
+	response, err = tryDownload(fmt.Sprintf(akamaiURLFormat, game.ID))
 	if err == nil && response != nil {
 		return
 	}
 
-	response, err = tryDownload(fmt.Sprintf(steamCdnURLFormat, game.Id))
+	response, err = tryDownload(fmt.Sprintf(steamCdnURLFormat, game.ID))
 	if err == nil && response != nil {
 		return
 	}

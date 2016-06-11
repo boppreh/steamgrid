@@ -16,15 +16,15 @@ import (
 // User in the local steam installation.
 type User struct {
 	Name      string
-	SteamId32 string
-	SteamId64 string
+	SteamID32 string
+	SteamID64 string
 	Dir       string
 }
 
 // Used to convert between SteamId32 and SteamId64.
 const idConversionConstant = 0x110000100000000
 
-// Given the Steam installation dir (NOT the library!), returns all users in
+// GetUsers given the Steam installation dir (NOT the library!), returns all users in
 // this computer.
 func GetUsers(installationDir string) ([]User, error) {
 	userdataDir := filepath.Join(installationDir, "userdata")
@@ -33,11 +33,11 @@ func GetUsers(installationDir string) ([]User, error) {
 		return nil, err
 	}
 
-	users := make([]User, 0)
+	var users []User
 
 	for _, userDir := range files {
-		userId := userDir.Name()
-		userDir := filepath.Join(userdataDir, userId)
+		userID := userDir.Name()
+		userDir := filepath.Join(userdataDir, userID)
 
 		configFile := filepath.Join(userDir, "config", "localconfig.vdf")
 		// Malformed user directory. Without the localconfig file we can't get
@@ -67,10 +67,10 @@ func GetUsers(installationDir string) ([]User, error) {
 		pattern := regexp.MustCompile(`"PersonaName"\s*"(.+?)"`)
 		username := pattern.FindStringSubmatch(string(configBytes))[1]
 
-		steamId32, err := strconv.ParseInt(userId, 10, 64)
-		steamId64 := steamId32 + idConversionConstant
-		strSteamId64 := strconv.FormatInt(steamId64, 10)
-		users = append(users, User{username, userId, strSteamId64, userDir})
+		steamID32, err := strconv.ParseInt(userID, 10, 64)
+		steamID64 := steamID32 + idConversionConstant
+		strSteamID64 := strconv.FormatInt(steamID64, 10)
+		users = append(users, User{username, userID, strSteamID64, userDir})
 	}
 
 	return users, nil
@@ -85,9 +85,9 @@ const profilePermalinkFormat = `http://steamcommunity.com/profiles/%v/games?tab=
 // message.
 const steamProfileErrorMessage = `The specified profile could not be found.`
 
-// Returns the HTML profile from a user from their SteamId32.
+// GetProfile returns the HTML profile from a user from their SteamId32.
 func GetProfile(user User) (string, error) {
-	response, err := http.Get(fmt.Sprintf(profilePermalinkFormat, user.SteamId64))
+	response, err := http.Get(fmt.Sprintf(profilePermalinkFormat, user.SteamID64))
 	if err != nil {
 		return "", err
 	}
@@ -110,7 +110,7 @@ func GetProfile(user User) (string, error) {
 	return profile, nil
 }
 
-// Returns the Steam installation directory in Windows. Should work for
+// GetSteamInstallation Returns the Steam installation directory in Windows. Should work for
 // internationalized systems, 32 and 64 bits and users that moved their
 // ProgramFiles folder. If a folder is given by program parameter, uses that.
 func GetSteamInstallation() (path string, err error) {
@@ -119,9 +119,8 @@ func GetSteamInstallation() (path string, err error) {
 		_, err := os.Stat(argDir)
 		if err == nil {
 			return argDir, nil
-		} else {
-			return "", errors.New("Argument must be a valid Steam directory, or empty for auto detection. Got: " + argDir)
-		}
+                }
+		return "", errors.New("Argument must be a valid Steam directory, or empty for auto detection. Got: " + argDir)
 	}
 
 	currentUser, err := user.Current()

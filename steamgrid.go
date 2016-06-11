@@ -54,10 +54,10 @@ func startApplication() {
 
 	nOverlaysApplied := 0
 	nDownloaded := 0
-	notFounds := make([]*Game, 0)
-	searchFounds := make([]*Game, 0)
-	errors := make([]*Game, 0)
-	errorMessages := make([]string, 0)
+	var notFounds []*Game
+	var searchFounds []*Game
+	var errors []*Game
+	var errorMessages []string
 
 	for _, user := range users {
 		fmt.Println("Loading games for " + user.Name)
@@ -66,13 +66,13 @@ func startApplication() {
 
 		i := 0
 		for _, game := range games {
-			i += 1
+			i++
 
 			var name string
 			if game.Name != "" {
 				name = game.Name
 			} else {
-				name = "unknown game with id " + game.Id
+				name = "unknown game with id " + game.ID
 			}
 			fmt.Printf("Processing %v (%v/%v)", name, i, len(games))
 
@@ -122,7 +122,7 @@ func startApplication() {
 	if len(searchFounds) >= 1 {
 		fmt.Printf("%v images were found with a Google search and may not be accurate:\n", len(searchFounds))
 		for _, game := range searchFounds {
-			fmt.Printf("* %v (steam id %v)\n", game.Name, game.Id)
+			fmt.Printf("* %v (steam id %v)\n", game.Name, game.ID)
 		}
 
 		fmt.Printf("\n\n")
@@ -131,7 +131,7 @@ func startApplication() {
 	if len(notFounds) >= 1 {
 		fmt.Printf("%v images could not be found anywhere:\n", len(notFounds))
 		for _, game := range notFounds {
-			fmt.Printf("- %v (id %v)\n", game.Name, game.Id)
+			fmt.Printf("- %v (id %v)\n", game.Name, game.ID)
 		}
 
 		fmt.Printf("\n\n")
@@ -140,7 +140,7 @@ func startApplication() {
 	if len(errors) >= 1 {
 		fmt.Printf("%v images were found but had errors and could not be overlaid:\n", len(errors))
 		for i, game := range errors {
-			fmt.Printf("- %v (id %v) (%v)\n", game.Name, game.Id, errorMessages[i])
+			fmt.Printf("- %v (id %v) (%v)\n", game.Name, game.ID, errorMessages[i])
 		}
 
 		fmt.Printf("\n\n")
