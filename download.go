@@ -14,6 +14,9 @@ import (
 // matching, and the other requires an API key limited to 100 searches a day.
 const googleSearchFormat = `https://www.google.com.br/search?tbs=isz%3Aex%2Ciszw%3A460%2Ciszh%3A215&tbm=isch&num=5&q=`
 
+// Possible Google result formats
+var googleSearchResultPatterns = []string{`imgurl=(.+?\.(jpg|png))&amp;imgrefurl=`, `\"ou\":\"(.+?)\",\"`}
+
 // Returns the first steam grid image URL found by Google search of a given
 // game name.
 func getGoogleImage(gameName string) (string, error) {
@@ -45,10 +48,13 @@ func getGoogleImage(gameName string) (string, error) {
 	}
 	response.Body.Close()
 
-	pattern := regexp.MustCompile(`imgurl=(.+?\.(jpg|png))&amp;imgrefurl=`)
-	matches := pattern.FindStringSubmatch(string(responseBytes))
-	if len(matches) >= 1 {
-		return matches[1], nil
+	for _, googleSearchResultPattern := range googleSearchResultPatterns {
+		pattern := regexp.MustCompile(googleSearchResultPattern)
+		matches := pattern.FindStringSubmatch(string(responseBytes))
+
+		if len(matches) >= 1 {
+			return matches[1], nil
+		}
 	}
 	return "", nil
 }
