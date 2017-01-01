@@ -82,7 +82,7 @@ const akamaiURLFormat = `https://steamcdn-a.akamaihd.net/steam/apps/%v/header.jp
 
 // The subreddit mentions this as primary, but I've found Akamai to contain
 // more images and answer faster.
-const steamCdnURLFormat = `http://cdn.steampowered.com/v/gfx/apps/%v/header.jpg`
+const steamCdnURLFormat = `cdn.akamai.steamstatic.com/steam/apps/%v/header.jpg`
 
 // Tries to load the grid image for a game from a number of alternative
 // sources. Returns the final response received and a flag indicating if it was
