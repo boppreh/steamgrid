@@ -119,7 +119,7 @@ func GetSteamInstallation() (path string, err error) {
 		_, err := os.Stat(argDir)
 		if err == nil {
 			return argDir, nil
-                }
+		}
 		return "", errors.New("Argument must be a valid Steam directory, or empty for auto detection. Got: " + argDir)
 	}
 
@@ -133,6 +133,11 @@ func GetSteamInstallation() (path string, err error) {
 		linuxSteamDir = filepath.Join(currentUser.HomeDir, ".steam", "steam")
 		if _, err = os.Stat(linuxSteamDir); err == nil {
 			return linuxSteamDir, nil
+		}
+
+		macSteamDir := filepath.Join(currentUser.HomeDir, "Library", "Application Support", "Steam")
+		if _, err = os.Stat(macSteamDir); err == nil {
+			return macSteamDir, nil
 		}
 	}
 
