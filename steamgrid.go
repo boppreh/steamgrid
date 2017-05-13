@@ -32,8 +32,6 @@ func startApplication() {
 		errorAndExit(err)
 	}
 	if len(overlays) == 0 {
-		// I'm trying to use a message box here, but for some reason the
-		// message appears twice and there's an error a closed channel.
 		fmt.Println("No category overlays found. You can put overlay images in the folder 'overlays by category', where the filename is the game category.\n\nContinuing without overlays...")
 	}
 
@@ -55,18 +53,21 @@ func startApplication() {
 	nOverlaysApplied := 0
 	nDownloaded := 0
 	var notFounds []*Game
-	var searchFounds []*Game
-	var errors []*Game
+	var searchedGames []*Game
+	var failedGames []*Game
 	var errorMessages []string
 
 	for _, user := range users {
 		fmt.Println("Loading games for " + user.Name)
+		gridDir := filepath.Join(user.Dir, "config", "grid")
 
 		games := GetGames(user)
 
 		i := 0
 		for _, game := range games {
 			i++
+
+			LoadBackup(gridDir, game)
 
 			var name string
 			if game.Name != "" {
@@ -76,42 +77,50 @@ func startApplication() {
 			}
 			fmt.Printf("Processing %v (%v/%v)", name, i, len(games))
 
-			if game.ImageBytes == nil {
-				err := DownloadImage(game)
+			if game.ImageSource == "" {
+				fromSearch, err := DownloadImage(gridDir, game)
 				if err != nil {
 					errorAndExit(err)
 				}
-				if game.ImageBytes != nil {
-					nDownloaded++
-				} else {
+				if game.ImageSource == "" {
 					notFounds = append(notFounds, game)
 					fmt.Printf(" not found\n")
 					// Game has no image, skip it.
 					continue
+				} else {
+					nDownloaded++
 				}
-				if game.ImageSource == "search" {
-					searchFounds = append(searchFounds, game)
+
+				if fromSearch {
+					searchedGames = append(searchedGames, game)
 				}
 			}
 
 			fmt.Printf(" found from %v\n", game.ImageSource)
 
-			err = BackupGame(game)
+			err := ApplyOverlay(game, overlays)
+			if err != nil {
+				print(err.Error(), "\n")
+				failedGames = append(failedGames, game)
+				errorMessages = append(errorMessages, err.Error())
+			}
+			if game.OverlayImageBytes != nil {
+				nOverlaysApplied++
+			} else {
+				game.OverlayImageBytes = game.CleanImageBytes
+			}
+
+			err = BackupGame(gridDir, game)
 			if err != nil {
 				errorAndExit(err)
 			}
 
-			applied, err := ApplyOverlay(game, overlays)
-			if err != nil {
-				print(err.Error(), "\n")
-				errors = append(errors, game)
-				errorMessages = append(errorMessages, err.Error())
-			}
-			if applied {
-				nOverlaysApplied++
+			if game.ImageExt == "" {
+				errorAndExit(errors.New("Failed to identify image format."))
 			}
 
-			err = ioutil.WriteFile(game.ImagePath, game.ImageBytes, 0666)
+			imagePath := filepath.Join(gridDir, game.ID+game.ImageExt)
+			err = ioutil.WriteFile(imagePath, game.OverlayImageBytes, 0666)
 			if err != nil {
 				fmt.Printf("Failed to write image for %v because: %v\n", game.Name, err.Error())
 			}
@@ -119,9 +128,9 @@ func startApplication() {
 	}
 
 	fmt.Printf("\n\n%v images downloaded and %v overlays applied.\n\n", nDownloaded, nOverlaysApplied)
-	if len(searchFounds) >= 1 {
-		fmt.Printf("%v images were found with a Google search and may not be accurate:\n", len(searchFounds))
-		for _, game := range searchFounds {
+	if len(searchedGames) >= 1 {
+		fmt.Printf("%v images were found with a Google search and may not be accurate:\n", len(searchedGames))
+		for _, game := range searchedGames {
 			fmt.Printf("* %v (steam id %v)\n", game.Name, game.ID)
 		}
 
@@ -137,9 +146,9 @@ func startApplication() {
 		fmt.Printf("\n\n")
 	}
 
-	if len(errors) >= 1 {
-		fmt.Printf("%v images were found but had errors and could not be overlaid:\n", len(errors))
-		for i, game := range errors {
+	if len(failedGames) >= 1 {
+		fmt.Printf("%v images were found but had errors and could not be overlaid:\n", len(failedGames))
+		for i, game := range failedGames {
 			fmt.Printf("- %v (id %v) (%v)\n", game.Name, game.ID, errorMessages[i])
 		}
 

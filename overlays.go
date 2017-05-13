@@ -12,18 +12,6 @@ import (
 	"strings"
 )
 
-// Loads an image from a given path.
-func loadImage(path string) (img image.Image, err error) {
-	reader, err := os.Open(path)
-	if err != nil {
-		return
-	}
-	defer reader.Close()
-
-	img, _, err = image.Decode(reader)
-	return
-}
-
 // LoadOverlays from the given dir, returning a map of name -> image.
 func LoadOverlays(dir string) (overlays map[string]image.Image, err error) {
 	overlays = make(map[string]image.Image, 0)
@@ -48,7 +36,13 @@ func LoadOverlays(dir string) (overlays map[string]image.Image, err error) {
 			continue
 		}
 
-		img, err := loadImage(filepath.Join(dir, file.Name()))
+		reader, err := os.Open(filepath.Join(dir, file.Name()))
+		if err != nil {
+			return nil, err
+		}
+		defer reader.Close()
+
+		img, _, err := image.Decode(reader)
 		if err != nil {
 			return overlays, err
 		}
@@ -64,16 +58,17 @@ func LoadOverlays(dir string) (overlays map[string]image.Image, err error) {
 
 // ApplyOverlay to the game image, depending on the category. The
 // resulting image is saved over the original.
-func ApplyOverlay(game *Game, overlays map[string]image.Image) (applied bool, err error) {
-	if game.ImagePath == "" || game.ImageBytes == nil || len(game.Tags) == 0 {
-		return false, nil
+func ApplyOverlay(game *Game, overlays map[string]image.Image) error {
+	if game.CleanImageBytes == nil || len(game.Tags) == 0 {
+		return nil
 	}
 
-	gameImage, _, err := image.Decode(bytes.NewBuffer(game.ImageBytes))
+	gameImage, _, err := image.Decode(bytes.NewBuffer(game.CleanImageBytes))
 	if err != nil {
-		return false, err
+		return err
 	}
 
+	applied := false
 	for _, tag := range game.Tags {
 		// Normalize tag name by lower-casing it and remove trailing "s" from
 		// plurals. Also, <, > and / are replaced with - because you can't have
@@ -96,18 +91,18 @@ func ApplyOverlay(game *Game, overlays map[string]image.Image) (applied bool, er
 	}
 
 	if !applied {
-		return false, nil
+		return nil
 	}
 
 	buf := new(bytes.Buffer)
-	if strings.HasSuffix(game.ImagePath, "jpg") {
-		err = jpeg.Encode(buf, gameImage, &jpeg.Options{90})
-	} else if strings.HasSuffix(game.ImagePath, "png") {
+	if game.ImageExt == ".jpg" || game.ImageExt == ".jpeg" {
+		err = jpeg.Encode(buf, gameImage, &jpeg.Options{95})
+	} else if game.ImageExt == ".png" {
 		err = png.Encode(buf, gameImage)
 	}
 	if err != nil {
-		return false, err
+		return err
 	}
-	game.ImageBytes = buf.Bytes()
-	return true, nil
+	game.OverlayImageBytes = buf.Bytes()
+	return nil
 }

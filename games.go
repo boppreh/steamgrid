@@ -8,7 +8,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"strconv"
-	"strings"
 )
 
 // Game in a steam library. May or may not be installed.
@@ -19,10 +18,12 @@ type Game struct {
 	Name string
 	// Tags, including user-created category and Steam's "Favorite" tag.
 	Tags []string
-	// Path for the grid image.
-	ImagePath string
-	// Raw bytes of the encoded image (usually jpg).
-	ImageBytes []byte
+	// Image format (.jpg, .jpeg, or .png).
+	ImageExt string
+	// Raw bytes of the encoded image (jpg or png) without overlays.
+	CleanImageBytes []byte
+	// Raw bytes of the encoded image (jpg or png) with overlays.
+	OverlayImageBytes []byte
 	// Description of where the image was found (backup, official, search).
 	ImageSource string
 }
@@ -46,8 +47,7 @@ func addGamesFromProfile(user User, games map[string]*Game) (err error) {
 		gameID := groups[1]
 		gameName := groups[2]
 		tags := []string{""}
-		imagePath := ""
-		games[gameID] = &Game{gameID, gameName, tags, imagePath, nil, ""}
+		games[gameID] = &Game{gameID, gameName, tags, "", nil, nil, ""}
 	}
 
 	return
@@ -85,7 +85,7 @@ func addUnknownGames(user User, games map[string]*Game) {
 				// If for some reason it wasn't included in the profile, create a new
 				// entry for it now. Unfortunately we don't have a name.
 				gameName := ""
-				games[gameID] = &Game{gameID, gameName, []string{tag}, "", nil, ""}
+				games[gameID] = &Game{gameID, gameName, []string{tag}, "", nil, nil, ""}
 			}
 		}
 	}
@@ -118,7 +118,7 @@ func addNonSteamGames(user User, games map[string]*Game) {
 		// to 64bit Steam ID. No idea why Steam chose this operation.
 		top := uint64(crc32.ChecksumIEEE(uniqueName)) | 0x80000000
 		gameID := strconv.FormatUint(top<<32|0x02000000, 10)
-		game := Game{gameID, string(gameName), []string{}, "", nil, ""}
+		game := Game{gameID, string(gameName), []string{}, "", nil, nil, ""}
 		games[gameID] = &game
 
 		tagsText := gameGroups[3]
@@ -137,38 +137,6 @@ func GetGames(user User) map[string]*Game {
 	addGamesFromProfile(user, games)
 	addUnknownGames(user, games)
 	addNonSteamGames(user, games)
-
-	suffixes := []string{
-		" (original)..jpg", // Mistakes were made, own up to them.
-		" (original)..png",
-		" (original).jpg",
-		" (original).png",
-		".jpg",
-		".jpeg",
-		".png",
-	}
-
-	// Load existing and backup images.
-	for _, game := range games {
-		gridDir := filepath.Join(user.Dir, "config", "grid")
-		for _, suffix := range suffixes {
-			imagePath := filepath.Join(gridDir, game.ID+suffix)
-			imageBytes, err := ioutil.ReadFile(imagePath)
-			if err == nil {
-				game.ImagePath = filepath.Join(gridDir, game.ID+filepath.Ext(suffix))
-				game.ImageBytes = imageBytes
-				if strings.HasPrefix(suffix, " (original)") {
-					game.ImageSource = "backup"
-				} else {
-					game.ImageSource = "manual customization"
-				}
-				break
-			}
-		}
-		if game.ImageBytes == nil {
-			game.ImagePath = filepath.Join(gridDir, game.ID+".jpg")
-		}
-	}
 
 	return games
 }

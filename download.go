@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"path/filepath"
 	"regexp"
 )
 
@@ -15,7 +16,7 @@ import (
 const googleSearchFormat = `https://www.google.com.br/search?tbs=isz%3Aex%2Ciszw%3A460%2Ciszh%3A215&tbm=isch&num=5&q=`
 
 // Possible Google result formats
-var googleSearchResultPatterns = []string{`imgurl=(.+?\.(jpg|png))&amp;imgrefurl=`, `\"ou\":\"(.+?)\",\"`}
+var googleSearchResultPatterns = []string{`imgurl=(.+?\.(jpeg|jpg|png))&amp;imgrefurl=`, `\"ou\":\"(.+?)\",\"`}
 
 // Returns the first steam grid image URL found by Google search of a given
 // game name.
@@ -115,10 +116,10 @@ func getImageAlternatives(game *Game) (response *http.Response, fromSearch bool,
 // DownloadImage tries to download the game images, saving it in game.ImageBytes. Returns
 // flags indicating if the operation succeeded and if the image downloaded was
 // from a search.
-func DownloadImage(game *Game) error {
+func DownloadImage(gridDir string, game *Game) (bool, error) {
 	response, fromSearch, err := getImageAlternatives(game)
 	if response == nil || err != nil {
-		return err
+		return false, err
 	}
 
 	imageBytes, err := ioutil.ReadAll(response.Body)
@@ -130,6 +131,7 @@ func DownloadImage(game *Game) error {
 		game.ImageSource = "download"
 	}
 
-	game.ImageBytes = imageBytes
-	return nil
+	game.CleanImageBytes = imageBytes
+	game.ImageExt = filepath.Ext(response.Request.URL.Path)
+	return fromSearch, nil
 }
