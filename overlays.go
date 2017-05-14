@@ -83,8 +83,15 @@ func ApplyOverlay(game *Game, overlays map[string]image.Image) error {
 			continue
 		}
 
-		result := image.NewRGBA(gameImage.Bounds().Union(overlayImage.Bounds()))
-		draw.Draw(result, result.Bounds(), gameImage, image.ZP, draw.Src)
+		result := image.NewRGBA(image.Rect(0, 0, 460, 215))
+		originalSize := gameImage.Bounds().Max
+		if originalSize.X != 460 || originalSize.Y != 215 || true {
+			// TODO: downscale incoming images. There are some official images with >22mb (!)
+			// "golang.org/x/image/draw"
+			//draw.ApproxBilinear.Scale(result, result.Bounds(), gameImage, gameImage.Bounds(), draw.Over, nil)
+		} else {
+			draw.Draw(result, result.Bounds(), gameImage, image.ZP, draw.Src)
+		}
 		draw.Draw(result, result.Bounds(), overlayImage, image.Point{0, 0}, draw.Over)
 		gameImage = result
 		applied = true
