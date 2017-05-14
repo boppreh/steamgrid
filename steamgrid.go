@@ -32,7 +32,9 @@ func startApplication() {
 		errorAndExit(err)
 	}
 	if len(overlays) == 0 {
-		fmt.Println("No category overlays found. You can put overlay images in the folder 'overlays by category', where the filename is the game category.\n\nContinuing without overlays...")
+		fmt.Println("No category overlays found. You can put overlay images in the folder 'overlays by category', where the filename is the game category.\n\nYou can find many user-created overlays at https://wwww.reddit.com/r/steamgrid/wiki/overlays .\n\nContinuing without overlays...\n\n")
+	} else {
+		fmt.Println("Loaded %v overlays. \n\nYou can find many user-created overlays at https://wwww.reddit.com/r/steamgrid/wiki/overlays .\n\n", len(overlays))
 	}
 
 	fmt.Println("Looking for Steam directory...")
