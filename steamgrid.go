@@ -32,9 +32,9 @@ func startApplication() {
 		errorAndExit(err)
 	}
 	if len(overlays) == 0 {
-		fmt.Println("No category overlays found. You can put overlay images in the folder 'overlays by category', where the filename is the game category.\n\nYou can find many user-created overlays at https://wwww.reddit.com/r/steamgrid/wiki/overlays .\n\nContinuing without overlays...\n\n")
+		fmt.Println("No category overlays found. You can put overlay images in the folder 'overlays by category', where the filename is the game category.\n\nYou can find many user-created overlays at https://wwww.reddit.com/r/steamgrid/wiki/overlays .\n\nContinuing without overlays...\n")
 	} else {
-		fmt.Println("Loaded %v overlays. \n\nYou can find many user-created overlays at https://wwww.reddit.com/r/steamgrid/wiki/overlays .\n\n", len(overlays))
+		fmt.Printf("Loaded %v overlays. \n\nYou can find many user-created overlays at https://wwww.reddit.com/r/steamgrid/wiki/overlays .\n\n", len(overlays))
 	}
 
 	fmt.Println("Looking for Steam directory...")
@@ -64,17 +64,33 @@ func startApplication() {
 		fmt.Println("Loading games for " + user.Name)
 		gridDir := filepath.Join(user.Dir, "config", "grid")
 
-		// Ignore "already exists" error.
-		MakeBackupFolder(gridDir)
 
 		games := GetGames(user)
+
+		fmt.Println("Loading existing images and backups...")
+		for _, game := range games {
+			overridePath := filepath.Join(filepath.Dir(os.Args[0]), "games")
+			LoadExisting(overridePath, gridDir, game)
+		}
+
+		// From this point onward we can delete the entire grid/ dir, because all relevant data is loaded in 'games'.
+		// This clean unused backups, and game images with different extensions.
+
+		err = os.Rename(gridDir, gridDir + " (old)")
+		if err != nil {
+			fmt.Println("Failed to move existing 'grid' to temporary path")
+			errorAndExit(err)
+		}
+
+		err = os.MkdirAll(filepath.Join(gridDir, "originals"), 0777)
+		if err != nil {
+			fmt.Println("Failed to create new empty 'grid':")
+			errorAndExit(err)
+		}
 
 		i := 0
 		for _, game := range games {
 			i++
-
-			overridePath := filepath.Join(filepath.Dir(os.Args[0]), "games")
-			LoadExisting(overridePath, gridDir, game)
 
 			var name string
 			if game.Name != "" {
@@ -84,6 +100,9 @@ func startApplication() {
 			}
 			fmt.Printf("Processing %v (%v/%v)", name, i, len(games))
 
+			///////////////////////
+			// Download if missing.
+			///////////////////////
 			if game.ImageSource == "" {
 				fromSearch, err := DownloadImage(gridDir, game)
 				if err != nil {
@@ -102,9 +121,11 @@ func startApplication() {
 					searchedGames = append(searchedGames, game)
 				}
 			}
-
 			fmt.Printf(" found from %v\n", game.ImageSource)
 
+			///////////////////////
+			// Apply overlay.
+			///////////////////////
 			err := ApplyOverlay(game, overlays)
 			if err != nil {
 				print(err.Error(), "\n")
@@ -117,20 +138,27 @@ func startApplication() {
 				game.OverlayImageBytes = game.CleanImageBytes
 			}
 
+			///////////////////////
+			// Save result.
+			///////////////////////
 			err = BackupGame(gridDir, game)
 			if err != nil {
 				errorAndExit(err)
 			}
-
 			if game.ImageExt == "" {
 				errorAndExit(errors.New("Failed to identify image format."))
 			}
-
 			imagePath := filepath.Join(gridDir, game.ID+game.ImageExt)
 			err = ioutil.WriteFile(imagePath, game.OverlayImageBytes, 0666)
 			if err != nil {
 				fmt.Printf("Failed to write image for %v because: %v\n", game.Name, err.Error())
 			}
+		}
+
+		err = os.RemoveAll(gridDir + " (old)")
+		if err != nil {
+			fmt.Println("Failed to remove old directory:")
+			errorAndExit(err)
 		}
 	}
 

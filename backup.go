@@ -24,10 +24,6 @@ func getBackupPath(gridDir string, game *Game) string {
 	return filepath.Join(gridDir, "originals", game.ID+" "+hexHash+game.ImageExt)
 }
 
-func MakeBackupFolder(gridDir string) error {
-	return os.Mkdir(filepath.Join(gridDir, "originals"), 0777)
-}
-
 func loadImage(game *Game, sourceName string, imagePath string) error {
 	imageBytes, err := ioutil.ReadFile(imagePath)
 	if err == nil {
