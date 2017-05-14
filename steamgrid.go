@@ -50,6 +50,7 @@ func startApplication() {
 		errorAndExit(errors.New("No users found at Steam/userdata. Have you used Steam before in this computer?"))
 	}
 
+
 	nOverlaysApplied := 0
 	nDownloaded := 0
 	var notFounds []*Game
@@ -60,6 +61,9 @@ func startApplication() {
 	for _, user := range users {
 		fmt.Println("Loading games for " + user.Name)
 		gridDir := filepath.Join(user.Dir, "config", "grid")
+
+		// Ignore "already exists" error.
+		MakeBackupFolder(gridDir)
 
 		games := GetGames(user)
 

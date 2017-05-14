@@ -21,7 +21,11 @@ func getBackupPath(gridDir string, game *Game) string {
 	hash := sha256.Sum256(game.OverlayImageBytes)
 	// [:] is required to convert a fixed length byte array to a byte slice.
 	hexHash := hex.EncodeToString(hash[:])
-	return filepath.Join(gridDir, game.ID+" backup "+hexHash+game.ImageExt)
+	return filepath.Join(gridDir, "originals", game.ID+" "+hexHash+game.ImageExt)
+}
+
+func MakeBackupFolder(gridDir string) error {
+	return os.Mkdir(filepath.Join(gridDir, "originals"), 0777)
 }
 
 func loadImage(game *Game, sourceName string, imagePath string) error {
