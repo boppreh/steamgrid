@@ -76,13 +76,9 @@ func startApplication() {
 		// From this point onward we can delete the entire grid/ dir, because all relevant data is loaded in 'games'.
 		// This clean unused backups, and game images with different extensions.
 
-		err = os.Rename(gridDir, gridDir + " (old)")
-		if err != nil {
-			fmt.Println("Failed to move existing 'grid' to temporary path")
-			errorAndExit(err)
-		}
-
-		err = os.MkdirAll(filepath.Join(gridDir, "originals"), 0777)
+		fmt.Println("Creating new grid...")
+		newGridDir := gridDir + " new"
+		err = os.MkdirAll(filepath.Join(newGridDir, "originals"), 0777)
 		if err != nil {
 			fmt.Println("Failed to create new empty 'grid':")
 			errorAndExit(err)
@@ -104,7 +100,7 @@ func startApplication() {
 			// Download if missing.
 			///////////////////////
 			if game.ImageSource == "" {
-				fromSearch, err := DownloadImage(gridDir, game)
+				fromSearch, err := DownloadImage(newGridDir, game)
 				if err != nil {
 					errorAndExit(err)
 				}
@@ -141,23 +137,31 @@ func startApplication() {
 			///////////////////////
 			// Save result.
 			///////////////////////
-			err = BackupGame(gridDir, game)
+			err = BackupGame(newGridDir, game)
 			if err != nil {
 				errorAndExit(err)
 			}
 			if game.ImageExt == "" {
 				errorAndExit(errors.New("Failed to identify image format."))
 			}
-			imagePath := filepath.Join(gridDir, game.ID+game.ImageExt)
+			imagePath := filepath.Join(newGridDir, game.ID+game.ImageExt)
 			err = ioutil.WriteFile(imagePath, game.OverlayImageBytes, 0666)
 			if err != nil {
 				fmt.Printf("Failed to write image for %v because: %v\n", game.Name, err.Error())
 			}
 		}
 
-		err = os.RemoveAll(gridDir + " (old)")
+		fmt.Println("Removing old grid...")
+		err = os.RemoveAll(gridDir)
 		if err != nil {
 			fmt.Println("Failed to remove old directory:")
+			errorAndExit(err)
+		}
+
+		fmt.Println("Moving new grid to correct location...")
+		err = os.Rename(newGridDir, gridDir)
+		if err != nil {
+			fmt.Println("Failed to move new grid dir to correct location:")
 			errorAndExit(err)
 		}
 	}
