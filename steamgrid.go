@@ -68,10 +68,6 @@ func startApplication() {
 		games := GetGames(user)
 
 		fmt.Println("Loading existing images and backups...")
-		for _, game := range games {
-			overridePath := filepath.Join(filepath.Dir(os.Args[0]), "games")
-			LoadExisting(overridePath, gridDir, game)
-		}
 
 		// From this point onward we can delete the entire grid/ dir, because all relevant data is loaded in 'games'.
 		// This clean unused backups, and game images with different extensions.
@@ -88,6 +84,9 @@ func startApplication() {
 		for _, game := range games {
 			i++
 
+			overridePath := filepath.Join(filepath.Dir(os.Args[0]), "games")
+			LoadExisting(overridePath, gridDir, game)
+
 			var name string
 			if game.Name != "" {
 				name = game.Name
@@ -102,14 +101,15 @@ func startApplication() {
 			if game.ImageSource == "" {
 				fromSearch, err := DownloadImage(newGridDir, game)
 				if err != nil {
-					errorAndExit(err)
+					fmt.Println(err.Error())
 				}
+
 				if game.ImageSource == "" {
 					notFounds = append(notFounds, game)
 					fmt.Printf(" not found\n")
 					// Game has no image, skip it.
 					continue
-				} else {
+				} else if err == nil{
 					nDownloaded++
 				}
 

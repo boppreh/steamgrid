@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"regexp"
 )
 
 // BackupGame if a game has a custom image, backs it up by appending "(original)" to the
@@ -41,10 +42,14 @@ func LoadExisting(overridePath string, gridDir string, game *Game) {
 		return
 	}
 
-	overridenNames, _ := filepath.Glob(filepath.Join(overridePath, game.Name+".*"))
-	if overridenNames != nil && len(overridenNames) > 0 {
-		loadImage(game, "local file in directory games/", overridenNames[0])
-		return
+	if game.Name != "" {
+		re := regexp.MustCompile(`\W+`)
+		globName := re.ReplaceAllString(game.Name, "*")
+		overridenNames, _ := filepath.Glob(filepath.Join(overridePath, globName+".*"))
+		if overridenNames != nil && len(overridenNames) > 0 {
+			loadImage(game, "local file in directory games/", overridenNames[0])
+			return
+		}
 	}
 
 
