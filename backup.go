@@ -38,7 +38,20 @@ func loadImage(game *Game, sourceName string, imagePath string) error {
 	return err
 }
 
-func LoadBackup(gridDir string, game *Game) {
+func LoadExisting(overridePath string, gridDir string, game *Game) {
+	overridenIDs, _ := filepath.Glob(filepath.Join(overridePath, game.ID+".*"))
+	if overridenIDs != nil && len(overridenIDs) > 0 {
+		loadImage(game, "local file in directory 'games'", overridenIDs[0])
+		return
+	}
+
+	overridenNames, _ := filepath.Glob(filepath.Join(overridePath, game.Name+".*"))
+	if overridenNames != nil && len(overridenNames) > 0 {
+		loadImage(game, "local file in directory games/", overridenNames[0])
+		return
+	}
+
+
 	// If there are any old-style backups (without hash), load them over the existing (with overlay) images.
 	oldBackups, err := filepath.Glob(filepath.Join(gridDir, game.ID+" (original)*"))
 	if err == nil && len(oldBackups) > 0 {

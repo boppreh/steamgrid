@@ -73,7 +73,8 @@ func startApplication() {
 		for _, game := range games {
 			i++
 
-			LoadBackup(gridDir, game)
+			overridePath := filepath.Join(filepath.Dir(os.Args[0]), "games")
+			LoadExisting(overridePath, gridDir, game)
 
 			var name string
 			if game.Name != "" {
