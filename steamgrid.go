@@ -72,15 +72,17 @@ func startApplication() {
 
 		fmt.Println("Loading existing images and backups...")
 
-		// From this point onward we could delete the entire grid/ dir, because all relevant data is loaded in 'games'.
-		// We don't, and this builds up useless files (TODO), but is better than accidentally deleting data.
-
 		i := 0
 		for _, game := range games {
 			i++
 
 			overridePath := filepath.Join(filepath.Dir(os.Args[0]), "games")
 			LoadExisting(overridePath, gridDir, game)
+			// This cleans up unused backups and images for the same game but with different extensions.
+			err = RemoveExisting(gridDir, game.ID)
+			if err != nil {
+				fmt.Println(err.Error())
+			}
 
 			var name string
 			if game.Name != "" {

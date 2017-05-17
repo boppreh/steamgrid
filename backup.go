@@ -25,6 +25,28 @@ func getBackupPath(gridDir string, game *Game) string {
 	return filepath.Join(gridDir, "originals", game.ID+" "+hexHash+game.ImageExt)
 }
 
+func RemoveExisting(gridDir string, gameId string) error {
+	images, err := filepath.Glob(filepath.Join(gridDir, gameId+".*"))
+	if err != nil {
+		return err
+	}
+
+	backups, err := filepath.Glob(filepath.Join(gridDir, "originals", gameId+" *.*"))
+	if err != nil {
+		return err
+	}
+
+	all := append(images, backups...)
+	for _, path := range all {
+		err = os.Remove(path)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func loadImage(game *Game, sourceName string, imagePath string) error {
 	imageBytes, err := ioutil.ReadFile(imagePath)
 	if err == nil {
