@@ -52,7 +52,6 @@ func LoadExisting(overridePath string, gridDir string, game *Game) {
 		}
 	}
 
-
 	// If there are any old-style backups (without hash), load them over the existing (with overlay) images.
 	oldBackups, err := filepath.Glob(filepath.Join(gridDir, game.ID+" (original)*"))
 	if err == nil && len(oldBackups) > 0 {

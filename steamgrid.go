@@ -52,7 +52,6 @@ func startApplication() {
 		errorAndExit(errors.New("No users found at Steam/userdata. Have you used Steam before in this computer?"))
 	}
 
-
 	nOverlaysApplied := 0
 	nDownloaded := 0
 	var notFounds []*Game
@@ -64,21 +63,17 @@ func startApplication() {
 		fmt.Println("Loading games for " + user.Name)
 		gridDir := filepath.Join(user.Dir, "config", "grid")
 
+		err = os.MkdirAll(filepath.Join(gridDir, "originals"), 0777)
+		if err != nil {
+			errorAndExit(err)
+		}
 
 		games := GetGames(user)
 
 		fmt.Println("Loading existing images and backups...")
 
-		// From this point onward we can delete the entire grid/ dir, because all relevant data is loaded in 'games'.
-		// This clean unused backups, and game images with different extensions.
-
-		fmt.Println("Creating new grid...")
-		newGridDir := gridDir + " new"
-		err = os.MkdirAll(filepath.Join(newGridDir, "originals"), 0777)
-		if err != nil {
-			fmt.Println("Failed to create new empty 'grid':")
-			errorAndExit(err)
-		}
+		// From this point onward we could delete the entire grid/ dir, because all relevant data is loaded in 'games'.
+		// We don't, and this builds up useless files (TODO), but is better than accidentally deleting data.
 
 		i := 0
 		for _, game := range games {
@@ -99,7 +94,7 @@ func startApplication() {
 			// Download if missing.
 			///////////////////////
 			if game.ImageSource == "" {
-				fromSearch, err := DownloadImage(newGridDir, game)
+				fromSearch, err := DownloadImage(gridDir, game)
 				if err != nil {
 					fmt.Println(err.Error())
 				}
@@ -109,7 +104,7 @@ func startApplication() {
 					fmt.Printf(" not found\n")
 					// Game has no image, skip it.
 					continue
-				} else if err == nil{
+				} else if err == nil {
 					nDownloaded++
 				}
 
@@ -137,32 +132,18 @@ func startApplication() {
 			///////////////////////
 			// Save result.
 			///////////////////////
-			err = BackupGame(newGridDir, game)
+			err = BackupGame(gridDir, game)
 			if err != nil {
 				errorAndExit(err)
 			}
 			if game.ImageExt == "" {
 				errorAndExit(errors.New("Failed to identify image format."))
 			}
-			imagePath := filepath.Join(newGridDir, game.ID+game.ImageExt)
+			imagePath := filepath.Join(gridDir, game.ID+game.ImageExt)
 			err = ioutil.WriteFile(imagePath, game.OverlayImageBytes, 0666)
 			if err != nil {
 				fmt.Printf("Failed to write image for %v because: %v\n", game.Name, err.Error())
 			}
-		}
-
-		fmt.Println("Removing old grid...")
-		err = os.RemoveAll(gridDir)
-		if err != nil {
-			fmt.Println("Failed to remove old directory:")
-			errorAndExit(err)
-		}
-
-		fmt.Println("Moving new grid to correct location...")
-		err = os.Rename(newGridDir, gridDir)
-		if err != nil {
-			fmt.Println("Failed to move new grid dir to correct location:")
-			errorAndExit(err)
 		}
 	}
 
