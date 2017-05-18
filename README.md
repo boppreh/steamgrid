@@ -5,6 +5,7 @@
 - Cache all game images, so you can browse without internet access or that
   annoying delay.
 - Automagically search, download and set custom images for games that are missing it, like non-Steam games.
+- Set images from packs you downlaoded.
 - Apply overlays based on your categories.
 
 You run it once and it'll set up everything above, automatically, keeping your existing custom images. You can run
@@ -12,16 +13,19 @@ again when you get more games or want to update the category overlays.
 
 # Download #
 
-[**steamgrid-windows.zip (2.5MB)**](https://github.com/boppreh/steamgrid/releases/download/v1.3.0/steamgrid-windows.zip)
+[**steamgrid-windows.zip (2.1MB)**](https://github.com/boppreh/steamgrid/releases/download/v2.0.0/steamgrid_windows.zip)
 
-[**steamgrid-linux.zip (1.9MB)**](https://github.com/boppreh/steamgrid/releases/download/v1.3.0/steamgrid-linux.zip)
+[**steamgrid-linux.zip (2.1MB)**](https://github.com/boppreh/steamgrid/releases/download/v2.0.0/steamgrid_linux.zip)
+
+[**steamgrid-mac.zip (2.2MB)**](https://github.com/boppreh/steamgrid/releases/download/v2.0.0/steamgrid_mac.zip)
 
 # How to use #
 
 1. Download the [latest version](https://github.com/boppreh/steamgrid/releases/latest) and extract the zip wherever.
 2. *(optional)* Name the overlays after your categories. So if you have a category "Games I Love", put a nice little heart overlay there named "games i love.png". You can rename the defaults that came with the zip or get new ones at [/r/steamgrid](http://www.reddit.com/r/steamgrid/wiki/overlays).
-3. Run `steamgrid` and wait. No, really, it's all automatic. Not a single keypress required.
-4. Read the report and open Steam in grid view to check the results.
+3. *(optional)* Download a pack of custom images and place it in the `games/` folder. The image files can be either the name of the game (e.g. "Psychonauts.png") or the game id (e.g. "3830.png").
+4. Run `steamgrid` and wait. No, really, it's all automatic. Not a single keypress required.
+5. Read the report and open Steam in grid view to check the results.
 
 ---
 
@@ -43,11 +47,12 @@ again when you get more games or want to update the category overlays.
   of the overlay file is the name of the category).
 - If you already have any customized images it'll use them and apply the
   overlay, but keeping a backup.
+- If you have images in the directory `games/`, it'll search by game name or by id and use them.
 - Works just as well with non-Steam games.
 - Supports PNG and JPG images.
 - Supports games with multiple categories.
 - No installation required, just extract the zip and double click.
-- Works with Windows and Linux, 32 or 64 bit.
+- Works with Windows, Linux, and MacOS, 32 or 64 bit.
 - 100% fire and forget, no interaction required, and can cancel and retry at any moment.
 
 # Something wrong? #
