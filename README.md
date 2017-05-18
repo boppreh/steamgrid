@@ -1,12 +1,6 @@
 # What is it? #
 
-**SteamGrid** is a small standalone program to enhance Steam's grid view and Big Picture. It does three things:
-
-- Cache all game images, so you can browse without internet access or that
-  annoying delay.
-- Automagically search, download and set custom images for games that are missing it, like non-Steam games.
-- Set images from packs you downlaoded.
-- Apply overlays based on your categories.
+**SteamGrid** is a standalone, fire-and-forget program to enhance Steam's grid view and Big Picture. It preloads the banner images for all your games (even non-Steam ones) and applies overlays depending on your categories.
 
 You run it once and it'll set up everything above, automatically, keeping your existing custom images. You can run
 again when you get more games or want to update the category overlays.
