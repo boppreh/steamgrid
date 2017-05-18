@@ -42,6 +42,8 @@ again when you get more games or want to update the category overlays.
 - Detects all local Steam users and customizes their grid images individually.
 - Downloads images from two different servers, and falls back to a Google
   search as last resort (don't worry, it'll tell you if that happens).
+- If a game is missing an official banner *and* a name (common for prototypes), it gets the name
+  from SteamDB and google searches the banner.
 - Loads your categories from the local Steam installation.
 - Applies transparent overlays based on each game categories (make sure the name
   of the overlay file is the name of the category).
@@ -57,6 +59,7 @@ again when you get more games or want to update the category overlays.
 
 # Something wrong? #
 
+- **Why are there crowns and other icons on top of my images?**: Those are the default overlays for categories, found in the folder `overlays by category/`. You can download new ones, or just delete the file and re-run SteamGrid to remove the overlay.
 - **Fails to find steam location**: You can drag and drop the Steam installation folder (not the library!) into `steamgrid.exe` for a manual override.
 - **A few images were not found**: Some images are hard to find. The program may miss a game, especially betas, prototypes and tests, but you can set an image manually through the Steam client (right click > `Set Custom Image`). Run `steamgrid` again to apply the overlays. If you know a good source of images, drop me a message.
 - **No overlays found**: make sure you put your overlays inside the `overlays by category` folder, and it's near the program itself. This error means absolutely no overlays were found, without even taking your categories names into consideration.
