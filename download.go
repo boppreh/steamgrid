@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"path/filepath"
 	"regexp"
+	"strings"
 )
 
 // When all else fails, Google it. Uses the regular web interface. There are
@@ -122,6 +123,17 @@ func DownloadImage(gridDir string, game *Game) (bool, error) {
 		return false, err
 	}
 
+	contentType := response.Header.Get("Content-Type")
+	urlExt := filepath.Ext(response.Request.URL.Path)
+	if contentType != "" {
+		game.ImageExt = "." + strings.Split(contentType, "/")[1]
+	} else if urlExt != "" {
+		game.ImageExt = urlExt
+	} else {
+		// Steam is forgiving on image extensions.
+		game.ImageExt = "jpg"
+	}
+
 	imageBytes, err := ioutil.ReadAll(response.Body)
 	response.Body.Close()
 
@@ -132,13 +144,12 @@ func DownloadImage(gridDir string, game *Game) (bool, error) {
 	}
 
 	game.CleanImageBytes = imageBytes
-	game.ImageExt = filepath.Ext(response.Request.URL.Path)
 	return fromSearch, nil
 }
 
-
 // Get game name from SteamDB as last resort.
 const steamDBForamt = `https://steamdb.info/app/%v`
+
 func GetGameName(gameId string) string {
 	response, err := tryDownload(fmt.Sprintf(steamDBForamt, gameId))
 	if err != nil || response == nil {

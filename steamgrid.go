@@ -142,9 +142,6 @@ func startApplication() {
 			if err != nil {
 				errorAndExit(err)
 			}
-			if game.ImageExt == "" {
-				errorAndExit(errors.New("Failed to identify image format."))
-			}
 			imagePath := filepath.Join(gridDir, game.ID+game.ImageExt)
 			err = ioutil.WriteFile(imagePath, game.OverlayImageBytes, 0666)
 			if err != nil {
