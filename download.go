@@ -70,7 +70,7 @@ func tryDownload(url string) (*http.Response, error) {
 	if response.StatusCode == 404 {
 		// Some apps don't have an image and there's nothing we can do.
 		return nil, nil
-	} else if response.StatusCode > 400 {
+	} else if response.StatusCode >= 400 {
 		// Other errors should be reported, though.
 		return nil, errors.New("Failed to download image " + url + ": " + response.Status)
 	}
@@ -134,4 +134,27 @@ func DownloadImage(gridDir string, game *Game) (bool, error) {
 	game.CleanImageBytes = imageBytes
 	game.ImageExt = filepath.Ext(response.Request.URL.Path)
 	return fromSearch, nil
+}
+
+
+// Get game name from SteamDB as last resort.
+const steamDBForamt = `https://steamdb.info/app/%v`
+func GetGameName(gameId string) string {
+	response, err := tryDownload(fmt.Sprintf(steamDBForamt, gameId))
+	if err != nil || response == nil {
+		return ""
+	}
+	page, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		return ""
+	}
+	response.Body.Close()
+
+	pattern := regexp.MustCompile("<tr>\n<td>Name</td>\\s*<td itemprop=\"name\">(.*?)</td>")
+	match := pattern.FindStringSubmatch(string(page))
+	if match == nil || len(match) == 0 {
+		return ""
+	} else {
+		return match[1]
+	}
 }

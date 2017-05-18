@@ -85,6 +85,10 @@ func startApplication() {
 			}
 
 			var name string
+			if game.Name == "" {
+				game.Name = GetGameName(game.ID)
+			}
+
 			if game.Name != "" {
 				name = game.Name
 			} else {
