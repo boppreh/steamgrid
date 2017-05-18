@@ -13,11 +13,11 @@ again when you get more games or want to update the category overlays.
 
 # Download #
 
-[**steamgrid-windows.zip (2.1MB)**](https://github.com/boppreh/steamgrid/releases/download/v2.0.0/steamgrid_windows.zip)
+[**steamgrid-windows.zip (2.1MB)**](https://github.com/boppreh/steamgrid/releases/download/v2.1.0/steamgrid_windows.zip)
 
-[**steamgrid-linux.zip (2.1MB)**](https://github.com/boppreh/steamgrid/releases/download/v2.0.0/steamgrid_linux.zip)
+[**steamgrid-linux.zip (2.1MB)**](https://github.com/boppreh/steamgrid/releases/download/v2.1.0/steamgrid_linux.zip)
 
-[**steamgrid-mac.zip (2.2MB)**](https://github.com/boppreh/steamgrid/releases/download/v2.0.0/steamgrid_mac.zip)
+[**steamgrid-mac.zip (2.2MB)**](https://github.com/boppreh/steamgrid/releases/download/v2.1.0/steamgrid_mac.zip)
 
 # How to use #
 
