@@ -46,12 +46,24 @@ func addGamesFromProfile(user User, games map[string]*Game) (err error) {
 	for _, groups := range pattern.FindAllStringSubmatch(profile, -1) {
 		gameID := groups[1]
 		gameName := groups[2]
-		tags := []string{""}
+		tags := []string{"default"} // Sgt. Nukem: Adding 'default' tag to every entry
 		games[gameID] = &Game{gameID, gameName, tags, "", nil, nil, ""}
 	}
 
 	return
 }
+
+
+// Sgt. Nukem: Returns true when the given slice contains the given value
+func contains(slice []string, value string) bool {
+	for _, elem := range slice {
+		if elem == value {
+			return true
+        }
+    }
+    return false
+}
+
 
 // Loads the categories list. This finds the categories for the games loaded
 // from the profile and sometimes find new games, although without names.
@@ -68,25 +80,46 @@ func addUnknownGames(user User, games map[string]*Game) {
 	}
 
 	sharedConf := string(sharedConfBytes)
-	// VDF pattern: "steamid" { "tags { "0" "category" } }
-	gamePattern := regexp.MustCompile(`"([0-9]+)"\s*{[^}]+?"tags"\s*{([^}]+?)}`)
+	// VDF pattern: "steamid" { "someothervariable" "someothervalue" "tags" { "0" "category1" "1" "category2" } "yetanothervar" "yetanotherval" } "steamid2" { ...
+	// old: gamePattern := regexp.MustCompile(`"([0-9]+)"\s*{[^}]+?"tags"\s*{([^}]+?)}`)
+	// Sgt. Nukem: Parsing even untagged games to apply 'default' overlay
+	gamePattern := regexp.MustCompile(`"([0-9]+)"\s*({[^}]+)}`)
+	tagsFromPropsPattern := regexp.MustCompile(`"tags"\s*{([^}]+)}?`)
 	tagsPattern := regexp.MustCompile(`"[0-9]+"\s*"(.+?)"`)
 	for _, gameGroups := range gamePattern.FindAllStringSubmatch(sharedConf, -1) {
 		gameID := gameGroups[1]
-		tagsText := gameGroups[2]
+		propertiesAll := gameGroups[2]
 
-		for _, tagGroups := range tagsPattern.FindAllStringSubmatch(tagsText, -1) {
-			tag := tagGroups[1]
-
-			game, ok := games[gameID]
-			if ok {
-				game.Tags = append(game.Tags, tag)
-			} else {
-				// If for some reason it wasn't included in the profile, create a new
-				// entry for it now. Unfortunately we don't have a name.
+		tagsTextArr := tagsFromPropsPattern.FindStringSubmatch(propertiesAll)
+		if tagsTextArr == nil || len(tagsTextArr) < 1 {
+			// Sgt. Nukem: No tags found, still adding to list to apply 'default' overlay
+			_, ok := games[gameID]
+			if !ok {
 				gameName := ""
-				games[gameID] = &Game{gameID, gameName, []string{tag}, "", nil, nil, ""}
+				games[gameID] = &Game{gameID, gameName, []string{""}, "", nil, nil, ""}
 			}
+		} else {
+			tagsText := tagsTextArr[0]
+			
+			for _, tagGroups := range tagsPattern.FindAllStringSubmatch(tagsText, -1) {
+				tag := tagGroups[1]
+
+				game, ok := games[gameID]
+				if ok {
+					game.Tags = append(game.Tags, tag)
+				} else {
+					// If for some reason it wasn't included in the profile, create a new
+					// entry for it now. Unfortunately we don't have a name.
+					gameName := ""
+					games[gameID] = &Game{gameID, gameName, []string{tag}, "", nil, nil, ""}
+				}
+			}
+		}
+
+		// Sgt. Nukem: Adding 'default' tag to every entry
+		defaultTagFound := contains(games[gameID].Tags, "default")
+		if !defaultTagFound {
+			games[gameID].Tags = append(games[gameID].Tags, string("default"))
 		}
 	}
 }
@@ -125,6 +158,12 @@ func addNonSteamGames(user User, games map[string]*Game) {
 		for _, tagGroups := range tagsPattern.FindAllSubmatch(tagsText, -1) {
 			tag := tagGroups[1]
 			game.Tags = append(game.Tags, string(tag))
+		}
+
+		// Sgt. Nukem: Adding 'default' tag to every entry
+		defaultTagFound := contains(game.Tags, "default")
+		if !defaultTagFound {
+			game.Tags = append(game.Tags, string("default"))
 		}
 	}
 }
