@@ -24,8 +24,8 @@ again when you get more games or want to update the category overlays.
 ---
 
 [![Results](https://i.imgur.com/HiBCe7p.png)](https://i.imgur.com/HiBCe7p.png)
-[![Grid view screenshot](http://i.imgur.com/abnqZ6C.png)](http://i.imgur.com/abnqZ6C.png)
-[![Big Picture screenshot](http://i.imgur.com/gv7xDda.png)](http://i.imgur.com/gv7xDda.png)
+[![Grid view screenshot](https://i.imgur.com/abnqZ6C.png)](https://i.imgur.com/abnqZ6C.png)
+[![Big Picture screenshot](https://i.imgur.com/gv7xDda.png)](https://i.imgur.com/gv7xDda.png)
 
 # Features #
 
@@ -61,3 +61,13 @@ again when you get more games or want to update the category overlays.
 - **I'm worried this is a virus**: I work with security, so no offense taken from a little paranoia. The complete source code is provided at this [Github repo](https://github.com/boppreh/steamgrid). If you are worried the binaries don't match the source, you can install Go on your machine and run the sources directly. All it does is save images inside `Steam/userdata/ID/config/grid`. It does connect to the internet, but only to fetch game names from you Steam profile and download images into the Steam's grid image folder. Nothing is installed or saved in the Windows registry, and aside from images downloaded it should leave the computer exactly as it found.
 
 If you encounter any problems please [open an issue](https://github.com/boppreh/steamgrid/issues/new). All critics and suggestions are welcome.
+
+# How to build #
+
+On **Windows**:
+1. Download the Go-Installer from https://golang.org/dl/ (the goX.XX.X.windows-amd64.msi file)
+2. Execute it to install the Go Runtime
+3. Open up a new CMD prompt
+4. Navigate to the directory, to which you cloned the git repo
+5. Run `go build`
+6. This will create an EXE named like the directory you ran it from
