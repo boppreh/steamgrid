@@ -37,7 +37,7 @@ func startApplication() {
 		fmt.Printf("Loaded %v overlays. \n\nYou can find many user-created overlays at https://www.reddit.com/r/steamgrid/wiki/overlays .\n\n", len(overlays))
 	}
 
-	fmt.Println("Looking for Steam directory...")
+	fmt.Println("Looking for Steam directory...If SteamGrid doesn´t find the directory automatically, launch it with an argument linking to the Steam directory.")
 	installationDir, err := GetSteamInstallation()
 	if err != nil {
 		errorAndExit(err)
