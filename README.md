@@ -16,8 +16,8 @@ again when you get more games or want to update the category overlays.
 # How to use #
 
 1. Download the [latest version](https://github.com/boppreh/steamgrid/releases/latest) and extract the zip wherever.
-2. *(optional)* Name the overlays after your categories. So if you have a category "Games I Love", put a nice little heart overlay there named "games i love.png". You can rename the defaults that came with the zip or get new ones at [/r/steamgrid](http://www.reddit.com/r/steamgrid/wiki/overlays).
-3. *(optional)* Download a pack of custom images and place it in the `games/` folder. The image files can be either the name of the game (e.g. "Psychonauts.png") or the game id (e.g. "3830.png").
+2. *(optional)* Name the overlays after your categories. So if you have a category "Games I Love", put a nice little heart overlay there named "games i love.png". You can rename the defaults that came with the zip or get new ones at [/r/steamgrid](http://www.reddit.com/r/steamgrid/wiki/overlays). Add the extension `.p` before the image extension for cover art ("games i love.p.png").
+3. *(optional)* Download a pack of custom images and place it in the `games/` folder. The image files can be either the name of the game (e.g. "Psychonauts.png") or the game id (e.g. "3830.png"). Add the extension `p` before the image extension for cover art ("Psychonauts.p.png", "3830p.png").
 4. Run `steamgrid` and wait. No, really, it's all automatic. Not a single keypress required.
 5. Read the report and open Steam in grid view to check the results.
 

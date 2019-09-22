@@ -37,7 +37,7 @@ func startApplication() {
 		fmt.Printf("Loaded %v overlays. \n\nYou can find many user-created overlays at https://www.reddit.com/r/steamgrid/wiki/overlays .\n\n", len(overlays))
 	}
 
-	fmt.Println("Looking for Steam directory...If SteamGrid doesn´t find the directory automatically, launch it with an argument linking to the Steam directory.")
+	fmt.Println("Looking for Steam directory...\nIf SteamGrid doesn´t find the directory automatically, launch it with an argument linking to the Steam directory.")
 	installationDir, err := GetSteamInstallation()
 	if err != nil {
 		errorAndExit(err)
@@ -54,10 +54,17 @@ func startApplication() {
 
 	nOverlaysApplied := 0
 	nDownloaded := 0
-	var notFounds []*Game
-	var searchedGames []*Game
-	var failedGames []*Game
+	var notFoundsBanner []*Game
+	var notFoundsCover []*Game
+	var searchedGamesBanner []*Game
+	var searchedGamesCover []*Game
+	var failedGamesBanner []*Game
+	var failedGamesCover []*Game
 	var errorMessages []string
+
+	// Dealing with Banner or Cover, maybe more in the future (hero?)
+	artStyles := []string{"Banner", "Cover"}
+	artStyleExtensions := []string{"", "p"}
 
 	for _, user := range users {
 		fmt.Println("Loading games for " + user.Name)
@@ -76,14 +83,6 @@ func startApplication() {
 		for _, game := range games {
 			i++
 
-			overridePath := filepath.Join(filepath.Dir(os.Args[0]), "games")
-			LoadExisting(overridePath, gridDir, game)
-			// This cleans up unused backups and images for the same game but with different extensions.
-			err = RemoveExisting(gridDir, game.ID)
-			if err != nil {
-				fmt.Println(err.Error())
-			}
-
 			var name string
 			if game.Name == "" {
 				game.Name = GetGameName(game.ID)
@@ -94,85 +93,130 @@ func startApplication() {
 			} else {
 				name = "unknown game with id " + game.ID
 			}
-			fmt.Printf("Processing %v (%v/%v)", name, i, len(games))
+			fmt.Printf("Processing %v (%v/%v)\n", name, i, len(games))
 
-			///////////////////////
-			// Download if missing.
-			///////////////////////
-			if game.ImageSource == "" {
-				fromSearch, err := DownloadImage(gridDir, game)
+			for j, artStyle := range artStyles {
+				// Clear for second run:
+				game.ImageSource = ""
+				game.ImageExt = ""
+				game.CleanImageBytes = nil
+				game.OverlayImageBytes = nil
+
+				overridePath := filepath.Join(filepath.Dir(os.Args[0]), "games")
+				LoadExisting(overridePath, gridDir, game, artStyleExtensions[j])
+				// This cleans up unused backups and images for the same game but with different extensions.
+				err = RemoveExisting(gridDir, game.ID, artStyleExtensions[j])
 				if err != nil {
 					fmt.Println(err.Error())
 				}
 
+				///////////////////////
+				// Download if missing.
+				///////////////////////
 				if game.ImageSource == "" {
-					notFounds = append(notFounds, game)
-					fmt.Printf(" not found\n")
-					// Game has no image, skip it.
-					continue
-				} else if err == nil {
-					nDownloaded++
+					from, err := DownloadImage(gridDir, game, artStyle)
+					if err != nil {
+						fmt.Println(err.Error())
+					}
+
+					if game.ImageSource == "" {
+						if artStyle == "Banner" {
+							notFoundsBanner = append(notFoundsBanner, game)
+						} else if artStyle == "Cover" {
+							notFoundsCover = append(notFoundsCover, game)
+						}
+						fmt.Printf("%v not found\n", artStyle)
+						// Game has no image, skip it.
+						continue
+					} else if err == nil {
+						nDownloaded++
+					}
+
+					if from == "search" {
+						if artStyle == "Banner" {
+							searchedGamesBanner = append(searchedGamesBanner, game)
+						} else if artStyle == "Cover" {
+							searchedGamesCover = append(searchedGamesCover, game)
+						}
+					}
+				}
+				fmt.Printf("%v found from %v\n", artStyle, game.ImageSource)
+
+				///////////////////////
+				// Apply overlay.
+				//
+				// Expecting name.artExt.imgExt:
+				// Banner: favorites.png
+				// Cover: favorites.p.png
+				///////////////////////
+				err := ApplyOverlay(game, overlays, artStyleExtensions[j])
+				if err != nil {
+					print(err.Error(), "\n")
+					if artStyle == "Banner" {
+						failedGamesBanner = append(failedGamesBanner, game)
+					} else if artStyle == "Cover" {
+						failedGamesCover = append(failedGamesCover, game)
+					}
+					errorMessages = append(errorMessages, err.Error())
+				}
+				if game.OverlayImageBytes != nil {
+					nOverlaysApplied++
+				} else {
+					game.OverlayImageBytes = game.CleanImageBytes
 				}
 
-				if fromSearch {
-					searchedGames = append(searchedGames, game)
+				///////////////////////
+				// Save result.
+				///////////////////////
+				err = BackupGame(gridDir, game, artStyleExtensions[j])
+				if err != nil {
+					errorAndExit(err)
 				}
-			}
-			fmt.Printf(" found from %v\n", game.ImageSource)
-
-			///////////////////////
-			// Apply overlay.
-			///////////////////////
-			err := ApplyOverlay(game, overlays)
-			if err != nil {
-				print(err.Error(), "\n")
-				failedGames = append(failedGames, game)
-				errorMessages = append(errorMessages, err.Error())
-			}
-			if game.OverlayImageBytes != nil {
-				nOverlaysApplied++
-			} else {
-				game.OverlayImageBytes = game.CleanImageBytes
-			}
-
-			///////////////////////
-			// Save result.
-			///////////////////////
-			err = BackupGame(gridDir, game)
-			if err != nil {
-				errorAndExit(err)
-			}
-			imagePath := filepath.Join(gridDir, game.ID+game.ImageExt)
-			err = ioutil.WriteFile(imagePath, game.OverlayImageBytes, 0666)
-			if err != nil {
-				fmt.Printf("Failed to write image for %v because: %v\n", game.Name, err.Error())
+				if game.ImageExt == ".jpeg" {
+					game.ImageExt = ".jpg"
+				}
+				imagePath := filepath.Join(gridDir, game.ID + artStyleExtensions[j] + game.ImageExt)
+				err = ioutil.WriteFile(imagePath, game.OverlayImageBytes, 0666)
+				if err != nil {
+					fmt.Printf("Failed to write image for %v (%v) because: %v\n", game.Name, artStyle, err.Error())
+				}
 			}
 		}
 	}
 
 	fmt.Printf("\n\n%v images downloaded and %v overlays applied.\n\n", nDownloaded, nOverlaysApplied)
-	if len(searchedGames) >= 1 {
-		fmt.Printf("%v images were found with a Google search and may not be accurate:\n", len(searchedGames))
-		for _, game := range searchedGames {
-			fmt.Printf("* %v (steam id %v)\n", game.Name, game.ID)
+	if len(searchedGamesBanner) + len(searchedGamesCover) >= 1 {
+		fmt.Printf("%v images were found with a Google search and may not be accurate:\n", len(searchedGamesBanner) + len(searchedGamesCover))
+		for _, game := range searchedGamesBanner {
+			fmt.Printf("* %v (steam id %v, Banner)\n", game.Name, game.ID)
+		}
+		for _, game := range searchedGamesCover {
+			fmt.Printf("* %v (steam id %v, Cover)\n", game.Name, game.ID)
+		}
+
+
+		fmt.Printf("\n\n")
+	}
+
+	if len(notFoundsBanner) + len(notFoundsCover) >= 1 {
+		fmt.Printf("%v images could not be found anywhere:\n", len(notFoundsBanner) + len(notFoundsCover))
+		for _, game := range notFoundsBanner {
+			fmt.Printf("- %v (id %v, Banner)\n", game.Name, game.ID)
+		}
+		for _, game := range notFoundsCover {
+			fmt.Printf("- %v (id %v, Cover)\n", game.Name, game.ID)
 		}
 
 		fmt.Printf("\n\n")
 	}
 
-	if len(notFounds) >= 1 {
-		fmt.Printf("%v images could not be found anywhere:\n", len(notFounds))
-		for _, game := range notFounds {
-			fmt.Printf("- %v (id %v)\n", game.Name, game.ID)
+	if len(failedGamesBanner) + len(failedGamesCover) >= 1 {
+		fmt.Printf("%v images were found but had errors and could not be overlaid:\n", len(failedGamesBanner) + len(failedGamesCover))
+		for i, game := range failedGamesBanner {
+			fmt.Printf("- %v (id %v, Banner) (%v)\n", game.Name, game.ID, errorMessages[i])
 		}
-
-		fmt.Printf("\n\n")
-	}
-
-	if len(failedGames) >= 1 {
-		fmt.Printf("%v images were found but had errors and could not be overlaid:\n", len(failedGames))
-		for i, game := range failedGames {
-			fmt.Printf("- %v (id %v) (%v)\n", game.Name, game.ID, errorMessages[i])
+		for i, game := range failedGamesCover {
+			fmt.Printf("- %v (id %v, Cover) (%v)\n", game.Name, game.ID, errorMessages[i])
 		}
 
 		fmt.Printf("\n\n")

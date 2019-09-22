@@ -49,7 +49,13 @@ func LoadOverlays(dir string) (overlays map[string]image.Image, err error) {
 
 		name := strings.TrimSuffix(file.Name(), filepath.Ext(file.Name()))
 		// Normalize overlay name.
-		name = strings.TrimRight(strings.ToLower(name), "s")
+		if strings.HasSuffix(name, ".p") {
+			name = strings.TrimSuffix(name, ".p")
+			name = strings.TrimRight(strings.ToLower(name), "s")
+			name = name + ".p"
+		} else {
+			name = strings.TrimRight(strings.ToLower(name), "s")
+		}
 		overlays[name] = img
 	}
 
@@ -58,7 +64,7 @@ func LoadOverlays(dir string) (overlays map[string]image.Image, err error) {
 
 // ApplyOverlay to the game image, depending on the category. The
 // resulting image is saved over the original.
-func ApplyOverlay(game *Game, overlays map[string]image.Image) error {
+func ApplyOverlay(game *Game, overlays map[string]image.Image, artStyleExtension string) error {
 	if game.CleanImageBytes == nil || len(game.Tags) == 0 {
 		return nil
 	}
@@ -66,6 +72,10 @@ func ApplyOverlay(game *Game, overlays map[string]image.Image) error {
 	gameImage, _, err := image.Decode(bytes.NewBuffer(game.CleanImageBytes))
 	if err != nil {
 		return err
+	}
+
+	if artStyleExtension != "" {
+		artStyleExtension = "." + artStyleExtension
 	}
 
 	applied := false
@@ -78,14 +88,19 @@ func ApplyOverlay(game *Game, overlays map[string]image.Image) error {
 		tagName = strings.Replace(tagName, ">", "-", -1)
 		tagName = strings.Replace(tagName, "/", "-", -1)
 
-		overlayImage, ok := overlays[tagName]
+		overlayImage, ok := overlays[tagName + artStyleExtension]
 		if !ok {
 			continue
 		}
 
-		result := image.NewRGBA(image.Rect(0, 0, 460, 215))
+		result := image.NewRGBA(image.Rect(0, 0, 0, 0))
+		if artStyleExtension == ".p" {
+			result = image.NewRGBA(image.Rect(0, 0, 600, 900))
+		} else {
+			result = image.NewRGBA(image.Rect(0, 0, 460, 215))
+		}
 		originalSize := gameImage.Bounds().Max
-		if (originalSize.X != 460 || originalSize.Y != 215) && false {
+		if ((originalSize.X != 460 || originalSize.Y != 215) || (originalSize.X != 600 || originalSize.Y != 900)) && false {
 			// TODO: downscale incoming images. There are some official images with >22mb (!)
 			// "golang.org/x/image/draw"
 			//draw.ApproxBilinear.Scale(result, result.Bounds(), gameImage, gameImage.Bounds(), draw.Over, nil)
