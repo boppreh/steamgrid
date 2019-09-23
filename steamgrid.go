@@ -33,6 +33,17 @@ func startApplication() {
 		"Cover": []string{"p", ".p", "library_600x900_2x.jpg", "600", "900", "dimensions=600x900"},
 	}
 
+	steamGridDBApiKey := "";
+
+	// Works for now, should be replaced by something better when more are added.
+	// Maybe https://github.com/jessevdk/go-flags ?
+	if len(os.Args) >= 3 {
+		if os.Args[1] == "--steamgriddb" {
+			steamGridDBApiKey = os.Args[2]
+			fmt.Println("Support for SteamGridDB activated")
+		}
+	}
+
 	fmt.Println("Loading overlays...")
 	overlays, err := LoadOverlays(filepath.Join(filepath.Dir(os.Args[0]), "overlays by category"), artStyles)
 	if err != nil {
@@ -63,6 +74,8 @@ func startApplication() {
 	nDownloaded := 0
 	var notFoundsBanner []*Game
 	var notFoundsCover []*Game
+	var steamGridDBBanner []*Game
+	var steamGridDBCover []*Game
 	var searchedGamesBanner []*Game
 	var searchedGamesCover []*Game
 	var failedGamesBanner []*Game
@@ -117,7 +130,7 @@ func startApplication() {
 				// Download if missing.
 				///////////////////////
 				if game.ImageSource == "" {
-					from, err := DownloadImage(gridDir, game, artStyle, artStyleExtensions)
+					from, err := DownloadImage(gridDir, game, artStyle, artStyleExtensions, steamGridDBApiKey)
 					if err != nil {
 						fmt.Println(err.Error())
 					}
@@ -135,7 +148,13 @@ func startApplication() {
 						nDownloaded++
 					}
 
-					if from == "search" {
+					if from == "SteamGridDB" {
+						if artStyle == "Banner" {
+							steamGridDBBanner = append(steamGridDBBanner, game)
+						} else if artStyle == "Cover" {
+							steamGridDBCover = append(steamGridDBCover, game)
+						}
+					} else if from == "search" {
 						if artStyle == "Banner" {
 							searchedGamesBanner = append(searchedGamesBanner, game)
 						} else if artStyle == "Cover" {
@@ -192,6 +211,19 @@ func startApplication() {
 			fmt.Printf("* %v (steam id %v, Banner)\n", game.Name, game.ID)
 		}
 		for _, game := range searchedGamesCover {
+			fmt.Printf("* %v (steam id %v, Cover)\n", game.Name, game.ID)
+		}
+
+
+		fmt.Printf("\n\n")
+	}
+
+	if len(steamGridDBBanner) + len(steamGridDBCover) >= 1 {
+		fmt.Printf("%v images were found on SteamGridDB and may not be in full quality:\n", len(steamGridDBBanner) + len(steamGridDBCover))
+		for _, game := range steamGridDBBanner {
+			fmt.Printf("* %v (steam id %v, Banner)\n", game.Name, game.ID)
+		}
+		for _, game := range steamGridDBCover {
 			fmt.Printf("* %v (steam id %v, Cover)\n", game.Name, game.ID)
 		}
 

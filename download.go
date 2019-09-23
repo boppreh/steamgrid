@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -61,6 +62,69 @@ func getGoogleImage(gameName string, artStyleExtensions []string) (string, error
 	return "", nil
 }
 
+type SteamGridDBAuthor struct {
+	Name string
+	Steam64 string
+	Avatar string
+}
+
+type SteamGridDBItem struct {
+	Id int
+	Score int
+	Style string
+	Url string
+	Thumb string
+	Tags []string
+	Author SteamGridDBAuthor
+}
+
+type SteamGridDBResponse struct {
+	Success bool
+	Data []SteamGridDBItem
+}
+
+// Search SteamGridDB for cover image
+const SteamGridDBBaseURL = "https://www.steamgriddb.com/api/v2"
+
+func getSteamGridDBImage(gameId string, artStyle string, steamGridDBApiKey string) (string, error) {
+	url := SteamGridDBBaseURL + "/grids/steam/" + gameId + "?styles=alternate"
+	if artStyle == "Banner" {
+		url = url + "&dimensions=legacy"
+	} else if artStyle == "Cover" {
+		url = url + "&dimensions=600x900"
+	}
+
+	client := &http.Client{}
+	req, err := http.NewRequest("GET", url, nil)
+	req.Header.Add("Authorization", "Bearer " + steamGridDBApiKey)
+	if err != nil {
+		return "", err
+	}
+
+	response, err := client.Do(req)
+	if err != nil {
+		return "", err
+	}
+
+	responseBytes, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		return "", err
+	}
+	response.Body.Close()
+
+	var jsonResponse SteamGridDBResponse
+	err = json.Unmarshal([]byte(responseBytes), &jsonResponse)
+	if err != nil {
+		return "", err
+	}
+
+	if jsonResponse.Success && len(jsonResponse.Data) >= 1 {
+		return jsonResponse.Data[0].Url, nil
+	}
+
+	return "", nil
+}
+
 // Tries to fetch a URL, returning the response only if it was positive.
 func tryDownload(url string) (*http.Response, error) {
 	response, err := http.Get(url)
@@ -90,7 +154,7 @@ const steamCdnURLFormat = `cdn.akamai.steamstatic.com/steam/apps/%v/`
 // sources. Returns the final response received and a flag indicating if it was
 // from a Google search (useful because we want to log the lower quality
 // images).
-func getImageAlternatives(game *Game, artStyle string, artStyleExtensions []string) (response *http.Response, from string, err error) {
+func getImageAlternatives(game *Game, artStyle string, artStyleExtensions []string, steamGridDBApiKey string) (response *http.Response, from string, err error) {
 	from = "steam server"
 	response, err = tryDownload(fmt.Sprintf(akamaiURLFormat + artStyleExtensions[2], game.ID))
 	if err == nil && response != nil {
@@ -103,6 +167,14 @@ func getImageAlternatives(game *Game, artStyle string, artStyleExtensions []stri
 	}
 
 	url := ""
+	if steamGridDBApiKey != "" {
+		from = "SteamGridDB"
+		url, err = getSteamGridDBImage(game.ID, artStyle, steamGridDBApiKey)
+		if err != nil {
+			return
+		}
+	}
+
 	// Skip for Covers, bad results
 	if artStyle == "Banner" {
 		from = "search"
@@ -123,8 +195,8 @@ func getImageAlternatives(game *Game, artStyle string, artStyleExtensions []stri
 // DownloadImage tries to download the game images, saving it in game.ImageBytes. Returns
 // flags indicating if the operation succeeded and if the image downloaded was
 // from a search.
-func DownloadImage(gridDir string, game *Game, artStyle string, artStyleExtensions []string) (string, error) {
-	response, from, err := getImageAlternatives(game, artStyle, artStyleExtensions)
+func DownloadImage(gridDir string, game *Game, artStyle string, artStyleExtensions []string, steamGridDBApiKey string) (string, error) {
+	response, from, err := getImageAlternatives(game, artStyle, artStyleExtensions, steamGridDBApiKey)
 	if response == nil || err != nil {
 		return "", err
 	}
@@ -143,6 +215,8 @@ func DownloadImage(gridDir string, game *Game, artStyle string, artStyleExtensio
 	if game.ImageExt == ".jpeg" {
 		// The new library ignores .jpeg
 		game.ImageExt = ".jpg"
+	} else if game.ImageExt == ".octet-stream" {
+		game.ImageExt = ".png"
 	}
 
 	imageBytes, err := ioutil.ReadAll(response.Body)
