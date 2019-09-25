@@ -131,7 +131,11 @@ func startApplication() {
 				///////////////////////
 				if game.ImageSource == "" {
 					from, err := DownloadImage(gridDir, game, artStyle, artStyleExtensions, steamGridDBApiKey)
-					if err != nil {
+					if err != nil && err.Error() == "401" {
+						// Wrong api key
+						steamGridDBApiKey = ""
+						fmt.Println("Api key rejected, disabling SteamGridDB.")
+					} else if err != nil {
 						fmt.Println(err.Error())
 					}
 
@@ -219,7 +223,7 @@ func startApplication() {
 	}
 
 	if len(steamGridDBBanner) + len(steamGridDBCover) >= 1 {
-		fmt.Printf("%v images were found on SteamGridDB and may not be in full quality:\n", len(steamGridDBBanner) + len(steamGridDBCover))
+		fmt.Printf("%v images were found on SteamGridDB and may not be in full quality or accurate:\n", len(steamGridDBBanner) + len(steamGridDBCover))
 		for _, game := range steamGridDBBanner {
 			fmt.Printf("* %v (steam id %v, Banner)\n", game.Name, game.ID)
 		}

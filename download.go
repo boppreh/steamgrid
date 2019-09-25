@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -62,58 +63,129 @@ func getGoogleImage(gameName string, artStyleExtensions []string) (string, error
 	return "", nil
 }
 
-type SteamGridDBAuthor struct {
-	Name string
-	Steam64 string
-	Avatar string
-}
-
-type SteamGridDBItem struct {
-	Id int
-	Score int
-	Style string
-	Url string
-	Thumb string
-	Tags []string
-	Author SteamGridDBAuthor
-}
-
+// https://www.steamgriddb.com/api/v2
 type SteamGridDBResponse struct {
 	Success bool
-	Data []SteamGridDBItem
+	Data []struct {
+		Id int
+		Score int
+		Style string
+		Url string
+		Thumb string
+		Tags []string
+		Author struct {
+			Name string
+			Steam64 string
+			Avatar string
+		}
+	}
+}
+
+type SteamGridDBSearchResponse struct {
+	Success bool
+	Data []struct {
+		Id int
+		Name string
+		Types []string
+		Verified bool
+	}
 }
 
 // Search SteamGridDB for cover image
 const SteamGridDBBaseURL = "https://www.steamgriddb.com/api/v2"
 
-func getSteamGridDBImage(gameId string, artStyle string, steamGridDBApiKey string) (string, error) {
-	url := SteamGridDBBaseURL + "/grids/steam/" + gameId + "?styles=alternate"
-	if artStyle == "Banner" {
-		url = url + "&dimensions=legacy"
-	} else if artStyle == "Cover" {
-		url = url + "&dimensions=600x900"
-	}
-
+func SteamGridDBGetRequest(url string, steamGridDBApiKey string) ([]byte, error) {
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", url, nil)
 	req.Header.Add("Authorization", "Bearer " + steamGridDBApiKey)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	response, err := client.Do(req)
 	if err != nil {
-		return "", err
+		return nil, err
+	}
+
+	if response.StatusCode == 401 {
+		// Authorization token is missing or invalid
+		return nil, errors.New("401")
+	} else if response.StatusCode == 404 {
+		// Could not find game with that id
+		return nil, errors.New("404")
 	}
 
 	responseBytes, err := ioutil.ReadAll(response.Body)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	response.Body.Close()
 
+	return responseBytes, nil
+}
+
+func getSteamGridDBImage(game *Game, artStyleExtensions []string, steamGridDBApiKey string) (string, error) {
+	// Specify artType:
+	// "alternate" "blurred" "white_logo" "material" "no_logo"
+	artTypes := []string{"alternate"}
+	filter := "?styles=" + strings.Join(artTypes, ",") + "&" + artStyleExtensions[5]
+
+	// Try with game.ID which is probably steams appID
+	url := SteamGridDBBaseURL + "/grids/steam/" + game.ID + filter
+	responseBytes, err := SteamGridDBGetRequest(url, steamGridDBApiKey)
 	var jsonResponse SteamGridDBResponse
-	err = json.Unmarshal([]byte(responseBytes), &jsonResponse)
+ 	if err != nil && err.Error() == "401" {
+		// Authorization token is missing or invalid
+		return "", err
+	} else if err != nil && err.Error() == "404" {
+		// Could not find game with that id
+
+		// Try searching for the name…
+		url = SteamGridDBBaseURL + "/search/autocomplete/" + game.Name + filter
+		responseBytes, err = SteamGridDBGetRequest(url, steamGridDBApiKey)
+		if err != nil {
+			return "", err
+		}
+
+		var jsonSearchResponse SteamGridDBSearchResponse
+		err = json.Unmarshal(responseBytes, &jsonSearchResponse)
+		if err != nil {
+			return "", errors.New("Best search match doesn't has a " + strings.Join(artTypes, ",") + " type")
+		}
+
+		SteamGridDBGameId := -1
+		if jsonSearchResponse.Success && len(jsonSearchResponse.Data) >= 1 {
+			for _, n := range jsonSearchResponse.Data[0].Types {
+				for _, m := range artTypes {
+					if n == m {
+						// This game has at least one of our requested artTypes
+						SteamGridDBGameId = jsonSearchResponse.Data[0].Id
+						break
+					}
+				}
+
+				if SteamGridDBGameId != -1 {
+					break
+				}
+			}
+		}
+
+		if SteamGridDBGameId == -1 {
+			return "", nil
+		}
+
+
+		// …and get the url of the top result.
+		url = SteamGridDBBaseURL + "/grids/game/" + strconv.Itoa(SteamGridDBGameId) + filter
+		responseBytes, err = SteamGridDBGetRequest(url, steamGridDBApiKey)
+		if err != nil {
+			return "", err
+		}
+	} else if err != nil {
+		return "", err
+	}
+
+	err = json.Unmarshal(responseBytes, &jsonResponse)
 	if err != nil {
 		return "", err
 	}
@@ -169,7 +241,7 @@ func getImageAlternatives(game *Game, artStyle string, artStyleExtensions []stri
 	url := ""
 	if steamGridDBApiKey != "" {
 		from = "SteamGridDB"
-		url, err = getSteamGridDBImage(game.ID, artStyle, steamGridDBApiKey)
+		url, err = getSteamGridDBImage(game, artStyleExtensions, steamGridDBApiKey)
 		if err != nil {
 			return
 		}
@@ -216,6 +288,7 @@ func DownloadImage(gridDir string, game *Game, artStyle string, artStyleExtensio
 		// The new library ignores .jpeg
 		game.ImageExt = ".jpg"
 	} else if game.ImageExt == ".octet-stream" {
+		// Amazonaws (steamgriddb) gives us an .octet-stream
 		game.ImageExt = ".png"
 	}
 
