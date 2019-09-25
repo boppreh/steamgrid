@@ -11,27 +11,27 @@ import (
 
 // BackupGame if a game has a custom image, backs it up by appending "(original)" to the
 // file name.
-func BackupGame(gridDir string, game *Game, artStyleExtension string) error {
+func BackupGame(gridDir string, game *Game, artStyleExtensions []string) error {
 	if game.CleanImageBytes != nil {
-		return ioutil.WriteFile(getBackupPath(gridDir, game, artStyleExtension), game.CleanImageBytes, 0666)
+		return ioutil.WriteFile(getBackupPath(gridDir, game, artStyleExtensions), game.CleanImageBytes, 0666)
 	}
 	return nil
 }
 
-func getBackupPath(gridDir string, game *Game, artStyleExtension string) string {
+func getBackupPath(gridDir string, game *Game, artStyleExtensions []string) string {
 	hash := sha256.Sum256(game.OverlayImageBytes)
 	// [:] is required to convert a fixed length byte array to a byte slice.
 	hexHash := hex.EncodeToString(hash[:])
-	return filepath.Join(gridDir, "originals", game.ID + artStyleExtension + " " + hexHash+game.ImageExt)
+	return filepath.Join(gridDir, "originals", game.ID + artStyleExtensions[0] + " " + hexHash+game.ImageExt)
 }
 
-func RemoveExisting(gridDir string, gameId string, artStyleExtension string) error {
-	images, err := filepath.Glob(filepath.Join(gridDir, gameId + artStyleExtension + ".*"))
+func RemoveExisting(gridDir string, gameId string, artStyleExtensions []string) error {
+	images, err := filepath.Glob(filepath.Join(gridDir, gameId + artStyleExtensions[0] + ".*"))
 	if err != nil {
 		return err
 	}
 
-	backups, err := filepath.Glob(filepath.Join(gridDir, "originals", gameId + artStyleExtension + " *.*"))
+	backups, err := filepath.Glob(filepath.Join(gridDir, "originals", gameId + artStyleExtensions[0] + " *.*"))
 	if err != nil {
 		return err
 	}
@@ -57,8 +57,8 @@ func loadImage(game *Game, sourceName string, imagePath string) error {
 	return err
 }
 
-func LoadExisting(overridePath string, gridDir string, game *Game, artStyleExtension string) {
-	overridenIDs, _ := filepath.Glob(filepath.Join(overridePath, game.ID + artStyleExtension + ".*"))
+func LoadExisting(overridePath string, gridDir string, game *Game, artStyleExtensions []string) {
+	overridenIDs, _ := filepath.Glob(filepath.Join(overridePath, game.ID + artStyleExtensions[0] + ".*"))
 	if overridenIDs != nil && len(overridenIDs) > 0 {
 		loadImage(game, "local file in directory 'games'", overridenIDs[0])
 		return
@@ -67,7 +67,7 @@ func LoadExisting(overridePath string, gridDir string, game *Game, artStyleExten
 	if game.Name != "" {
 		re := regexp.MustCompile(`\W+`)
 		globName := re.ReplaceAllString(game.Name, "*")
-		overridenNames, _ := filepath.Glob(filepath.Join(overridePath, globName + "." + artStyleExtension + ".*"))
+		overridenNames, _ := filepath.Glob(filepath.Join(overridePath, globName + artStyleExtensions[1] + ".*"))
 		if overridenNames != nil && len(overridenNames) > 0 {
 			loadImage(game, "local file in directory games/", overridenNames[0])
 			return
@@ -75,7 +75,7 @@ func LoadExisting(overridePath string, gridDir string, game *Game, artStyleExten
 	}
 
 	// If there are any old-style backups (without hash), load them over the existing (with overlay) images.
-	oldBackups, err := filepath.Glob(filepath.Join(gridDir, game.ID + artStyleExtension + " (original)*"))
+	oldBackups, err := filepath.Glob(filepath.Join(gridDir, game.ID + artStyleExtensions[0] + " (original)*"))
 	if err == nil && len(oldBackups) > 0 {
 		err = loadImage(game, "legacy backup (now converted)", oldBackups[0])
 		if err == nil {
@@ -84,14 +84,14 @@ func LoadExisting(overridePath string, gridDir string, game *Game, artStyleExten
 		}
 	}
 
-	files, err := filepath.Glob(filepath.Join(gridDir, game.ID + artStyleExtension + ".*"))
+	files, err := filepath.Glob(filepath.Join(gridDir, game.ID + artStyleExtensions[0] + ".*"))
 	if err == nil && len(files) > 0 {
 		err = loadImage(game, "manual customization", files[0])
 		if err == nil {
 			game.OverlayImageBytes = game.CleanImageBytes
 
 			// See if there exists a backup image with no overlays or modifications.
-			loadImage(game, "backup", getBackupPath(gridDir, game, artStyleExtension))
+			loadImage(game, "backup", getBackupPath(gridDir, game, artStyleExtensions))
 		}
 	}
 

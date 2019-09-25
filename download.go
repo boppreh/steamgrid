@@ -14,20 +14,19 @@ import (
 // When all else fails, Google it. Uses the regular web interface. There are
 // two image search APIs, but one is deprecated and doesn't support exact size
 // matching, and the other requires an API key limited to 100 searches a day.
-const googleSearchFormatBanner = `https://www.google.com.br/search?tbs=isz%3Aex%2Ciszw%3A460%2Ciszh%3A215&tbm=isch&num=5&q=`
-const googleSearchFormatCover = `https://www.google.com.br/search?tbs=isz%3Aex%2Ciszw%3A600%2Ciszh%3A900&tbm=isch&num=5&q=`
+const googleSearchFormat = `https://www.google.com.br/search?tbs=isz%3Aex%2Ciszw%3A%v%2Ciszh%3A%v&tbm=isch&num=5&q=`
 
 // Possible Google result formats
 var googleSearchResultPatterns = []string{`imgurl=(.+?\.(jpeg|jpg|png))&amp;imgrefurl=`, `\"ou\":\"(.+?)\",\"`}
 
 // Returns the first steam grid image URL found by Google search of a given
 // game name.
-func getGoogleImage(gameName string) (string, error) {
+func getGoogleImage(gameName string, artStyleExtensions []string) (string, error) {
 	if gameName == "" {
 		return "", nil
 	}
 
-	url := googleSearchFormatBanner + url.QueryEscape(gameName)
+	url := fmt.Sprintf(googleSearchFormat, artStyleExtensions[3], artStyleExtensions[4]) + url.QueryEscape(gameName)
 
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", url, nil)
@@ -81,43 +80,33 @@ func tryDownload(url string) (*http.Response, error) {
 }
 
 // Primary URL for downloading grid images.
-const akamaiURLFormatBanner = `https://steamcdn-a.akamaihd.net/steam/apps/%v/header.jpg`
-const akamaiURLFormatCover = `https://steamcdn-a.akamaihd.net/steam/apps/%v/library_600x900_2x.jpg`
+const akamaiURLFormat = `https://steamcdn-a.akamaihd.net/steam/apps/%v/`
 
 // The subreddit mentions this as primary, but I've found Akamai to contain
 // more images and answer faster.
-const steamCdnURLFormatBanner = `cdn.akamai.steamstatic.com/steam/apps/%v/header.jpg`
-const steamCdnURLFormatCover = `cdn.akamai.steamstatic.com/steam/apps/%v/library_600x900_2x.jpg`
+const steamCdnURLFormat = `cdn.akamai.steamstatic.com/steam/apps/%v/`
 
 // Tries to load the grid image for a game from a number of alternative
 // sources. Returns the final response received and a flag indicating if it was
 // from a Google search (useful because we want to log the lower quality
 // images).
-func getImageAlternatives(game *Game, artStyle string) (response *http.Response, from string, err error) {
+func getImageAlternatives(game *Game, artStyle string, artStyleExtensions []string) (response *http.Response, from string, err error) {
 	from = "steam server"
-	if artStyle == "Banner" {
-		response, err = tryDownload(fmt.Sprintf(akamaiURLFormatBanner, game.ID))
-	} else if artStyle == "Cover" {
-		response, err = tryDownload(fmt.Sprintf(akamaiURLFormatCover, game.ID))
-	}
+	response, err = tryDownload(fmt.Sprintf(akamaiURLFormat + artStyleExtensions[2], game.ID))
 	if err == nil && response != nil {
 		return
 	}
 
-	if artStyle == "Banner" {
-		response, err = tryDownload(fmt.Sprintf(steamCdnURLFormatBanner, game.ID))
-	} else if artStyle == "Cover" {
-		response, err = tryDownload(fmt.Sprintf(steamCdnURLFormatCover, game.ID))
-	}
+	response, err = tryDownload(fmt.Sprintf(steamCdnURLFormat + artStyleExtensions[2], game.ID))
 	if err == nil && response != nil {
 		return
 	}
 
-	var url string
-	// Skip for Covers
-	if artStyle != "Cover" {
+	url := ""
+	// Skip for Covers, bad results
+	if artStyle == "Banner" {
 		from = "search"
-		url, err = getGoogleImage(game.Name)
+		url, err = getGoogleImage(game.Name, artStyleExtensions)
 		if err != nil {
 			return
 		}
@@ -134,8 +123,8 @@ func getImageAlternatives(game *Game, artStyle string) (response *http.Response,
 // DownloadImage tries to download the game images, saving it in game.ImageBytes. Returns
 // flags indicating if the operation succeeded and if the image downloaded was
 // from a search.
-func DownloadImage(gridDir string, game *Game, artStyle string) (string, error) {
-	response, from, err := getImageAlternatives(game, artStyle)
+func DownloadImage(gridDir string, game *Game, artStyle string, artStyleExtensions []string) (string, error) {
+	response, from, err := getImageAlternatives(game, artStyle, artStyleExtensions)
 	if response == nil || err != nil {
 		return "", err
 	}

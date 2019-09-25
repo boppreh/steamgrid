@@ -10,10 +10,12 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	// "golang.org/x/image/draw"
 )
 
 // LoadOverlays from the given dir, returning a map of name -> image.
-func LoadOverlays(dir string) (overlays map[string]image.Image, err error) {
+func LoadOverlays(dir string, artStyles map[string][]string) (overlays map[string]image.Image, err error) {
 	overlays = make(map[string]image.Image, 0)
 
 	if _, err = os.Stat(dir); err != nil {
@@ -49,13 +51,14 @@ func LoadOverlays(dir string) (overlays map[string]image.Image, err error) {
 
 		name := strings.TrimSuffix(file.Name(), filepath.Ext(file.Name()))
 		// Normalize overlay name.
-		if strings.HasSuffix(name, ".p") {
-			name = strings.TrimSuffix(name, ".p")
-			name = strings.TrimRight(strings.ToLower(name), "s")
-			name = name + ".p"
-		} else {
-			name = strings.TrimRight(strings.ToLower(name), "s")
+		for _, artStyleExtensions := range artStyles {
+			if strings.HasSuffix(name, artStyleExtensions[1]) {
+				name = strings.TrimSuffix(name, artStyleExtensions[1])
+				name = strings.TrimRight(strings.ToLower(name), "s")
+				name = name + artStyleExtensions[1]
+			}
 		}
+
 		overlays[name] = img
 	}
 
@@ -64,7 +67,7 @@ func LoadOverlays(dir string) (overlays map[string]image.Image, err error) {
 
 // ApplyOverlay to the game image, depending on the category. The
 // resulting image is saved over the original.
-func ApplyOverlay(game *Game, overlays map[string]image.Image, artStyleExtension string) error {
+func ApplyOverlay(game *Game, overlays map[string]image.Image, artStyle string, artStyleExtensions []string) error {
 	if game.CleanImageBytes == nil || len(game.Tags) == 0 {
 		return nil
 	}
@@ -72,10 +75,6 @@ func ApplyOverlay(game *Game, overlays map[string]image.Image, artStyleExtension
 	gameImage, _, err := image.Decode(bytes.NewBuffer(game.CleanImageBytes))
 	if err != nil {
 		return err
-	}
-
-	if artStyleExtension != "" {
-		artStyleExtension = "." + artStyleExtension
 	}
 
 	applied := false
@@ -88,22 +87,22 @@ func ApplyOverlay(game *Game, overlays map[string]image.Image, artStyleExtension
 		tagName = strings.Replace(tagName, ">", "-", -1)
 		tagName = strings.Replace(tagName, "/", "-", -1)
 
-		overlayImage, ok := overlays[tagName + artStyleExtension]
+		overlayImage, ok := overlays[tagName + artStyleExtensions[1]]
 		if !ok {
 			continue
 		}
 
 		result := image.NewRGBA(image.Rect(0, 0, 0, 0))
-		if artStyleExtension == ".p" {
+		if artStyle == "Banner" {
+			result = image.NewRGBA(image.Rect(0, 0, 920, 430))
+		} else if artStyle == "Cover" {
 			result = image.NewRGBA(image.Rect(0, 0, 600, 900))
-		} else {
-			result = image.NewRGBA(image.Rect(0, 0, 460, 215))
 		}
 		originalSize := gameImage.Bounds().Max
-		if ((originalSize.X != 460 || originalSize.Y != 215) || (originalSize.X != 600 || originalSize.Y != 900)) && false {
-			// TODO: downscale incoming images. There are some official images with >22mb (!)
-			// "golang.org/x/image/draw"
-			//draw.ApproxBilinear.Scale(result, result.Bounds(), gameImage, gameImage.Bounds(), draw.Over, nil)
+		if ((originalSize.X != 920 && originalSize.Y != 430) || (originalSize.X != 600 && originalSize.Y != 900) && false) {
+			// scale, Steam supports high dpi
+			// https://godoc.org/golang.org/x/image/draw#Kernel.Scale
+			// draw.ApproxBiLinear.Scale(result, result.Bounds(), gameImage, gameImage.Bounds(), draw.Over, nil)
 		} else {
 			draw.Draw(result, result.Bounds(), gameImage, image.ZP, draw.Src)
 		}

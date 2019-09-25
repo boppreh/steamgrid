@@ -26,8 +26,15 @@ func main() {
 }
 
 func startApplication() {
+	// Dealing with Banner or Cover, maybe more in the future (hero?)
+	artStyles := map[string][]string{
+		// artStyle: ["idExtension", "fileExtension", steamExtension, googleExtensionX, googleExtensionY, steamGridDB]
+		"Banner": []string{"", "", "header.jpg", "460", "215", "dimensions=legacy"},
+		"Cover": []string{"p", ".p", "library_600x900_2x.jpg", "600", "900", "dimensions=600x900"},
+	}
+
 	fmt.Println("Loading overlays...")
-	overlays, err := LoadOverlays(filepath.Join(filepath.Dir(os.Args[0]), "overlays by category"))
+	overlays, err := LoadOverlays(filepath.Join(filepath.Dir(os.Args[0]), "overlays by category"), artStyles)
 	if err != nil {
 		errorAndExit(err)
 	}
@@ -62,10 +69,6 @@ func startApplication() {
 	var failedGamesCover []*Game
 	var errorMessages []string
 
-	// Dealing with Banner or Cover, maybe more in the future (hero?)
-	artStyles := []string{"Banner", "Cover"}
-	artStyleExtensions := []string{"", "p"}
-
 	for _, user := range users {
 		fmt.Println("Loading games for " + user.Name)
 		gridDir := filepath.Join(user.Dir, "config", "grid")
@@ -95,17 +98,17 @@ func startApplication() {
 			}
 			fmt.Printf("Processing %v (%v/%v)\n", name, i, len(games))
 
-			for j, artStyle := range artStyles {
-				// Clear for second run:
+			for artStyle, artStyleExtensions := range artStyles {
+				// Clear for multiple runs:
 				game.ImageSource = ""
 				game.ImageExt = ""
 				game.CleanImageBytes = nil
 				game.OverlayImageBytes = nil
 
 				overridePath := filepath.Join(filepath.Dir(os.Args[0]), "games")
-				LoadExisting(overridePath, gridDir, game, artStyleExtensions[j])
+				LoadExisting(overridePath, gridDir, game, artStyleExtensions)
 				// This cleans up unused backups and images for the same game but with different extensions.
-				err = RemoveExisting(gridDir, game.ID, artStyleExtensions[j])
+				err = RemoveExisting(gridDir, game.ID, artStyleExtensions)
 				if err != nil {
 					fmt.Println(err.Error())
 				}
@@ -114,7 +117,7 @@ func startApplication() {
 				// Download if missing.
 				///////////////////////
 				if game.ImageSource == "" {
-					from, err := DownloadImage(gridDir, game, artStyle)
+					from, err := DownloadImage(gridDir, game, artStyle, artStyleExtensions)
 					if err != nil {
 						fmt.Println(err.Error())
 					}
@@ -149,7 +152,7 @@ func startApplication() {
 				// Banner: favorites.png
 				// Cover: favorites.p.png
 				///////////////////////
-				err := ApplyOverlay(game, overlays, artStyleExtensions[j])
+				err := ApplyOverlay(game, overlays, artStyle, artStyleExtensions)
 				if err != nil {
 					print(err.Error(), "\n")
 					if artStyle == "Banner" {
@@ -168,12 +171,12 @@ func startApplication() {
 				///////////////////////
 				// Save result.
 				///////////////////////
-				err = BackupGame(gridDir, game, artStyleExtensions[j])
+				err = BackupGame(gridDir, game, artStyleExtensions)
 				if err != nil {
 					errorAndExit(err)
 				}
 
-				imagePath := filepath.Join(gridDir, game.ID + artStyleExtensions[j] + game.ImageExt)
+				imagePath := filepath.Join(gridDir, game.ID + artStyleExtensions[0] + game.ImageExt)
 				err = ioutil.WriteFile(imagePath, game.OverlayImageBytes, 0666)
 				if err != nil {
 					fmt.Printf("Failed to write image for %v (%v) because: %v\n", game.Name, artStyle, err.Error())
