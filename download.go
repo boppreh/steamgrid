@@ -151,6 +151,11 @@ func DownloadImage(gridDir string, game *Game, artStyle string) (string, error) 
 		game.ImageExt = "jpg"
 	}
 
+	if game.ImageExt == ".jpeg" {
+		// The new library ignores .jpeg
+		game.ImageExt = ".jpg"
+	}
+
 	imageBytes, err := ioutil.ReadAll(response.Body)
 	response.Body.Close()
 

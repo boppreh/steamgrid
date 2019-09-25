@@ -172,9 +172,7 @@ func startApplication() {
 				if err != nil {
 					errorAndExit(err)
 				}
-				if game.ImageExt == ".jpeg" {
-					game.ImageExt = ".jpg"
-				}
+
 				imagePath := filepath.Join(gridDir, game.ID + artStyleExtensions[j] + game.ImageExt)
 				err = ioutil.WriteFile(imagePath, game.OverlayImageBytes, 0666)
 				if err != nil {
