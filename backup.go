@@ -88,10 +88,14 @@ func LoadExisting(overridePath string, gridDir string, game *Game, artStyleExten
 	if err == nil && len(files) > 0 {
 		err = loadImage(game, "manual customization", files[0])
 		if err == nil {
+			// set as overlay to check for hash in getBackupPath()
 			game.OverlayImageBytes = game.CleanImageBytes
 
 			// See if there exists a backup image with no overlays or modifications.
 			loadImage(game, "backup", getBackupPath(gridDir, game, artStyleExtensions))
+
+			// remove overlay
+			game.OverlayImageBytes = nil
 		}
 	}
 
