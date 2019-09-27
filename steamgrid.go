@@ -152,7 +152,7 @@ func startApplication() {
 				// Banner: favorites.png
 				// Cover: favorites.p.png
 				///////////////////////
-				err := ApplyOverlay(game, overlays, artStyle, artStyleExtensions)
+				err := ApplyOverlay(game, overlays, artStyleExtensions)
 				if err != nil {
 					print(err.Error(), "\n")
 					if artStyle == "Banner" {

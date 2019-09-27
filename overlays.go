@@ -3,7 +3,7 @@ package main
 import (
 	"bytes"
 	"image"
-	"image/draw"
+	// "image/draw"
 	"image/jpeg"
 	"image/png"
 	"io/ioutil"
@@ -11,7 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	// "golang.org/x/image/draw"
+	"golang.org/x/image/draw"
 )
 
 // LoadOverlays from the given dir, returning a map of name -> image.
@@ -67,7 +67,7 @@ func LoadOverlays(dir string, artStyles map[string][]string) (overlays map[strin
 
 // ApplyOverlay to the game image, depending on the category. The
 // resulting image is saved over the original.
-func ApplyOverlay(game *Game, overlays map[string]image.Image, artStyle string, artStyleExtensions []string) error {
+func ApplyOverlay(game *Game, overlays map[string]image.Image, artStyleExtensions []string) error {
 	if game.CleanImageBytes == nil || len(game.Tags) == 0 {
 		return nil
 	}
@@ -92,17 +92,17 @@ func ApplyOverlay(game *Game, overlays map[string]image.Image, artStyle string, 
 			continue
 		}
 
-		result := image.NewRGBA(image.Rect(0, 0, 0, 0))
-		if artStyle == "Banner" {
-			result = image.NewRGBA(image.Rect(0, 0, 920, 430))
-		} else if artStyle == "Cover" {
-			result = image.NewRGBA(image.Rect(0, 0, 600, 900))
-		}
+		// We expect overlays in the correct format so we have to scale the image if it doesn't fit
+		// BannerLQ: 460 x 215
+		// BannerHQ: 920 x 430
+		// Cover: 600 x 900
+		overlaySize := overlayImage.Bounds().Max
+		result := image.NewRGBA(image.Rect(0, 0, overlaySize.X, overlaySize.Y))
 		originalSize := gameImage.Bounds().Max
-		if ((originalSize.X != 920 && originalSize.Y != 430) || (originalSize.X != 600 && originalSize.Y != 900) && false) {
-			// scale, Steam supports high dpi
+		if (originalSize.X != overlaySize.X && originalSize.Y != overlaySize.Y) {
+			// scale to fit overlay
 			// https://godoc.org/golang.org/x/image/draw#Kernel.Scale
-			// draw.ApproxBiLinear.Scale(result, result.Bounds(), gameImage, gameImage.Bounds(), draw.Over, nil)
+			draw.ApproxBiLinear.Scale(result, result.Bounds(), gameImage, gameImage.Bounds(), draw.Over, nil)
 		} else {
 			draw.Draw(result, result.Bounds(), gameImage, image.ZP, draw.Src)
 		}
