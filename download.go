@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"image"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -378,6 +380,18 @@ func DownloadImage(gridDir string, game *Game, artStyle string, artStyleExtensio
 
 	imageBytes, err := ioutil.ReadAll(response.Body)
 	response.Body.Close()
+
+	// catch false aspect ratios
+	image, _, err := image.Decode(bytes.NewBuffer(imageBytes))
+	if err != nil {
+		return "", err
+	}
+	imageSize := image.Bounds().Max
+	if (artStyle == "Banner" && imageSize.X < imageSize.Y) {
+		return "", nil
+	} else if (artStyle == "Cover" && imageSize.X > imageSize.Y) {
+		return "", nil
+	}
 
 	game.ImageSource = from;
 
