@@ -35,6 +35,7 @@ func startApplication() {
 	}
 
 	steamGridDBApiKey := flag.String("steamgriddb", "", "Your personal SteamGridDB api key, get one here: https://www.steamgriddb.com/profile/preferences")
+	IGDBApiKey := flag.String("igdb", "", "Your personal IGDB api key, get one here: https://api.igdb.com/signup")
 	steamDir := flag.String("steamdir", "", "Path to your steam installation")
 	flag.Parse()
 
@@ -70,6 +71,8 @@ func startApplication() {
 	var notFoundsCover []*Game
 	var steamGridDBBanner []*Game
 	var steamGridDBCover []*Game
+	var IGDBBanner []*Game
+	var IGDBCover []*Game
 	var searchedGamesBanner []*Game
 	var searchedGamesCover []*Game
 	var failedGamesBanner []*Game
@@ -124,11 +127,11 @@ func startApplication() {
 				// Download if missing.
 				///////////////////////
 				if game.ImageSource == "" {
-					from, err := DownloadImage(gridDir, game, artStyle, artStyleExtensions, *steamGridDBApiKey)
-					if err != nil && err.Error() == "401" {
+					from, err := DownloadImage(gridDir, game, artStyle, artStyleExtensions, *steamGridDBApiKey, *IGDBApiKey)
+					if err != nil && err.Error() == "SteamGridDB authorization token is missing or invalid" {
 						// Wrong api key
 						*steamGridDBApiKey = ""
-						fmt.Println("Api key rejected, disabling SteamGridDB.")
+						fmt.Println(err.Error())
 					} else if err != nil {
 						fmt.Println(err.Error())
 					}
@@ -146,13 +149,20 @@ func startApplication() {
 						nDownloaded++
 					}
 
-					if from == "SteamGridDB" {
+					switch from {
+					case "IGDB":
+						if artStyle == "Banner" {
+							IGDBBanner = append(IGDBBanner, game)
+						} else if artStyle == "Cover" {
+							IGDBCover = append(IGDBCover, game)
+						}
+					case "SteamGridDB":
 						if artStyle == "Banner" {
 							steamGridDBBanner = append(steamGridDBBanner, game)
 						} else if artStyle == "Cover" {
 							steamGridDBCover = append(steamGridDBCover, game)
 						}
-					} else if from == "search" {
+					case "search":
 						if artStyle == "Banner" {
 							searchedGamesBanner = append(searchedGamesBanner, game)
 						} else if artStyle == "Cover" {
@@ -209,6 +219,19 @@ func startApplication() {
 			fmt.Printf("* %v (steam id %v, Banner)\n", game.Name, game.ID)
 		}
 		for _, game := range searchedGamesCover {
+			fmt.Printf("* %v (steam id %v, Cover)\n", game.Name, game.ID)
+		}
+
+
+		fmt.Printf("\n\n")
+	}
+
+	if len(IGDBBanner) + len(IGDBCover) >= 1 {
+		fmt.Printf("%v images were found on IGDB and may not be in full quality or accurate:\n", len(IGDBBanner) + len(IGDBCover))
+		for _, game := range IGDBBanner {
+			fmt.Printf("* %v (steam id %v, Banner)\n", game.Name, game.ID)
+		}
+		for _, game := range IGDBCover {
 			fmt.Printf("* %v (steam id %v, Cover)\n", game.Name, game.ID)
 		}
 
