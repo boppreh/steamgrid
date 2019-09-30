@@ -5,6 +5,7 @@ package main
 import (
 	"bufio"
 	"errors"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -33,16 +34,9 @@ func startApplication() {
 		"Cover": []string{"p", ".p", "library_600x900_2x.jpg", "600", "900", "dimensions=600x900"},
 	}
 
-	steamGridDBApiKey := "";
-
-	// Works for now, should be replaced by something better when more are added.
-	// Maybe https://github.com/jessevdk/go-flags ?
-	if len(os.Args) >= 3 {
-		if os.Args[1] == "--steamgriddb" {
-			steamGridDBApiKey = os.Args[2]
-			fmt.Println("Support for SteamGridDB activated")
-		}
-	}
+	steamGridDBApiKey := flag.String("steamgriddb", "", "Your personal SteamGridDB api key, get one here: https://www.steamgriddb.com/profile/preferences")
+	steamDir := flag.String("steamdir", "", "Path to your steam installation")
+	flag.Parse()
 
 	fmt.Println("Loading overlays...")
 	overlays, err := LoadOverlays(filepath.Join(filepath.Dir(os.Args[0]), "overlays by category"), artStyles)
@@ -56,7 +50,7 @@ func startApplication() {
 	}
 
 	fmt.Println("Looking for Steam directory...\nIf SteamGrid doesn´t find the directory automatically, launch it with an argument linking to the Steam directory.")
-	installationDir, err := GetSteamInstallation()
+	installationDir, err := GetSteamInstallation(*steamDir)
 	if err != nil {
 		errorAndExit(err)
 	}
@@ -130,10 +124,10 @@ func startApplication() {
 				// Download if missing.
 				///////////////////////
 				if game.ImageSource == "" {
-					from, err := DownloadImage(gridDir, game, artStyle, artStyleExtensions, steamGridDBApiKey)
+					from, err := DownloadImage(gridDir, game, artStyle, artStyleExtensions, *steamGridDBApiKey)
 					if err != nil && err.Error() == "401" {
 						// Wrong api key
-						steamGridDBApiKey = ""
+						*steamGridDBApiKey = ""
 						fmt.Println("Api key rejected, disabling SteamGridDB.")
 					} else if err != nil {
 						fmt.Println(err.Error())
