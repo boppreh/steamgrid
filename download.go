@@ -325,7 +325,7 @@ func getImageAlternatives(game *Game, artStyle string, artStyleExtensions []stri
 	}
 
 	// IGDB has mostly cover styles
-	if artStyle == "Cover" && IGDBApiKey != "" {
+	if artStyle == "Cover" && IGDBApiKey != "" && url == "" {
 		from = "IGDB"
 		url, err = getIGDBImage(game.Name, IGDBApiKey)
 		if err != nil {
