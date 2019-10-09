@@ -128,7 +128,8 @@ func getSteamGridDBImage(game *Game, artStyleExtensions []string, steamGridDBApi
 	// Specify artType:
 	// "alternate" "blurred" "white_logo" "material" "no_logo"
 	artTypes := []string{"alternate"}
-	filter := "?styles=" + strings.Join(artTypes, ",") + "&" + artStyleExtensions[5]
+	filter := "?styles=" + strings.Join(artTypes, ",")
+	filter = filter + "&dimensions=" + artStyleExtensions[3] + "x" + artStyleExtensions[4]
 
 	// Try with game.ID which is probably steams appID
 	url := SteamGridDBBaseURL + "/grids/steam/" + game.ID + filter
@@ -239,7 +240,7 @@ func getImageAlternatives(game *Game, artStyle string, artStyleExtensions []stri
 	}
 
 	url := ""
-	if steamGridDBApiKey != "" {
+	if steamGridDBApiKey != "" && url == "" {
 		from = "SteamGridDB"
 		url, err = getSteamGridDBImage(game, artStyleExtensions, steamGridDBApiKey)
 		if err != nil {
@@ -248,7 +249,7 @@ func getImageAlternatives(game *Game, artStyle string, artStyleExtensions []stri
 	}
 
 	// Skip for Covers, bad results
-	if artStyle == "Banner" {
+	if artStyle == "Banner" && url == "" {
 		from = "search"
 		url, err = getGoogleImage(game.Name, artStyleExtensions)
 		if err != nil {

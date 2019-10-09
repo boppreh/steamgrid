@@ -29,9 +29,9 @@ func main() {
 func startApplication() {
 	// Dealing with Banner or Cover, maybe more in the future (hero?)
 	artStyles := map[string][]string{
-		// artStyle: ["idExtension", "fileExtension", steamExtension, googleExtensionX, googleExtensionY, steamGridDB]
-		"Banner": []string{"", "", "header.jpg", "460", "215", "dimensions=legacy"},
-		"Cover": []string{"p", ".p", "library_600x900_2x.jpg", "600", "900", "dimensions=600x900"},
+		// artStyle: ["idExtension", "fileExtension", steamExtension, dimensionX, dimensionY]
+		"Banner": []string{"", "", "header.jpg", "460", "215"},
+		"Cover": []string{"p", ".p", "library_600x900_2x.jpg", "600", "900"},
 	}
 
 	steamGridDBApiKey := flag.String("steamgriddb", "", "Your personal SteamGridDB api key, get one here: https://www.steamgriddb.com/profile/preferences")
