@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -8,6 +9,7 @@ import (
 	"net/url"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -61,6 +63,141 @@ func getGoogleImage(gameName string, artStyleExtensions []string) (string, error
 	return "", nil
 }
 
+// https://www.steamgriddb.com/api/v2
+type SteamGridDBResponse struct {
+	Success bool
+	Data []struct {
+		Id int
+		Score int
+		Style string
+		Url string
+		Thumb string
+		Tags []string
+		Author struct {
+			Name string
+			Steam64 string
+			Avatar string
+		}
+	}
+}
+
+type SteamGridDBSearchResponse struct {
+	Success bool
+	Data []struct {
+		Id int
+		Name string
+		Types []string
+		Verified bool
+	}
+}
+
+// Search SteamGridDB for cover image
+const SteamGridDBBaseURL = "https://www.steamgriddb.com/api/v2"
+
+func SteamGridDBGetRequest(url string, steamGridDBApiKey string) ([]byte, error) {
+	client := &http.Client{}
+	req, err := http.NewRequest("GET", url, nil)
+	req.Header.Add("Authorization", "Bearer " + steamGridDBApiKey)
+	if err != nil {
+		return nil, err
+	}
+
+	response, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+
+	if response.StatusCode == 401 {
+		// Authorization token is missing or invalid
+		return nil, errors.New("401")
+	} else if response.StatusCode == 404 {
+		// Could not find game with that id
+		return nil, errors.New("404")
+	}
+
+	responseBytes, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		return nil, err
+	}
+	response.Body.Close()
+
+	return responseBytes, nil
+}
+
+func getSteamGridDBImage(game *Game, artStyleExtensions []string, steamGridDBApiKey string) (string, error) {
+	// Specify artType:
+	// "alternate" "blurred" "white_logo" "material" "no_logo"
+	artTypes := []string{"alternate"}
+	filter := "?styles=" + strings.Join(artTypes, ",")
+	filter = filter + "&dimensions=" + artStyleExtensions[3] + "x" + artStyleExtensions[4]
+
+	// Try with game.ID which is probably steams appID
+	url := SteamGridDBBaseURL + "/grids/steam/" + game.ID + filter
+	responseBytes, err := SteamGridDBGetRequest(url, steamGridDBApiKey)
+	var jsonResponse SteamGridDBResponse
+ 	if err != nil && err.Error() == "401" {
+		// Authorization token is missing or invalid
+		return "", err
+	} else if err != nil && err.Error() == "404" {
+		// Could not find game with that id
+
+		// Try searching for the name…
+		url = SteamGridDBBaseURL + "/search/autocomplete/" + game.Name + filter
+		responseBytes, err = SteamGridDBGetRequest(url, steamGridDBApiKey)
+		if err != nil {
+			return "", err
+		}
+
+		var jsonSearchResponse SteamGridDBSearchResponse
+		err = json.Unmarshal(responseBytes, &jsonSearchResponse)
+		if err != nil {
+			return "", errors.New("Best search match doesn't has a " + strings.Join(artTypes, ",") + " type")
+		}
+
+		SteamGridDBGameId := -1
+		if jsonSearchResponse.Success && len(jsonSearchResponse.Data) >= 1 {
+			for _, n := range jsonSearchResponse.Data[0].Types {
+				for _, m := range artTypes {
+					if n == m {
+						// This game has at least one of our requested artTypes
+						SteamGridDBGameId = jsonSearchResponse.Data[0].Id
+						break
+					}
+				}
+
+				if SteamGridDBGameId != -1 {
+					break
+				}
+			}
+		}
+
+		if SteamGridDBGameId == -1 {
+			return "", nil
+		}
+
+
+		// …and get the url of the top result.
+		url = SteamGridDBBaseURL + "/grids/game/" + strconv.Itoa(SteamGridDBGameId) + filter
+		responseBytes, err = SteamGridDBGetRequest(url, steamGridDBApiKey)
+		if err != nil {
+			return "", err
+		}
+	} else if err != nil {
+		return "", err
+	}
+
+	err = json.Unmarshal(responseBytes, &jsonResponse)
+	if err != nil {
+		return "", err
+	}
+
+	if jsonResponse.Success && len(jsonResponse.Data) >= 1 {
+		return jsonResponse.Data[0].Url, nil
+	}
+
+	return "", nil
+}
+
 // Tries to fetch a URL, returning the response only if it was positive.
 func tryDownload(url string) (*http.Response, error) {
 	response, err := http.Get(url)
@@ -90,7 +227,7 @@ const steamCdnURLFormat = `cdn.akamai.steamstatic.com/steam/apps/%v/`
 // sources. Returns the final response received and a flag indicating if it was
 // from a Google search (useful because we want to log the lower quality
 // images).
-func getImageAlternatives(game *Game, artStyle string, artStyleExtensions []string) (response *http.Response, from string, err error) {
+func getImageAlternatives(game *Game, artStyle string, artStyleExtensions []string, steamGridDBApiKey string) (response *http.Response, from string, err error) {
 	from = "steam server"
 	response, err = tryDownload(fmt.Sprintf(akamaiURLFormat + artStyleExtensions[2], game.ID))
 	if err == nil && response != nil {
@@ -103,8 +240,16 @@ func getImageAlternatives(game *Game, artStyle string, artStyleExtensions []stri
 	}
 
 	url := ""
+	if steamGridDBApiKey != "" && url == "" {
+		from = "SteamGridDB"
+		url, err = getSteamGridDBImage(game, artStyleExtensions, steamGridDBApiKey)
+		if err != nil {
+			return
+		}
+	}
+
 	// Skip for Covers, bad results
-	if artStyle == "Banner" {
+	if artStyle == "Banner" && url == "" {
 		from = "search"
 		url, err = getGoogleImage(game.Name, artStyleExtensions)
 		if err != nil {
@@ -123,8 +268,8 @@ func getImageAlternatives(game *Game, artStyle string, artStyleExtensions []stri
 // DownloadImage tries to download the game images, saving it in game.ImageBytes. Returns
 // flags indicating if the operation succeeded and if the image downloaded was
 // from a search.
-func DownloadImage(gridDir string, game *Game, artStyle string, artStyleExtensions []string) (string, error) {
-	response, from, err := getImageAlternatives(game, artStyle, artStyleExtensions)
+func DownloadImage(gridDir string, game *Game, artStyle string, artStyleExtensions []string, steamGridDBApiKey string) (string, error) {
+	response, from, err := getImageAlternatives(game, artStyle, artStyleExtensions, steamGridDBApiKey)
 	if response == nil || err != nil {
 		return "", err
 	}
@@ -143,6 +288,9 @@ func DownloadImage(gridDir string, game *Game, artStyle string, artStyleExtensio
 	if game.ImageExt == ".jpeg" {
 		// The new library ignores .jpeg
 		game.ImageExt = ".jpg"
+	} else if game.ImageExt == ".octet-stream" {
+		// Amazonaws (steamgriddb) gives us an .octet-stream
+		game.ImageExt = ".png"
 	}
 
 	imageBytes, err := ioutil.ReadAll(response.Body)

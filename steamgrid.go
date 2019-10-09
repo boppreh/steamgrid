@@ -5,6 +5,7 @@ package main
 import (
 	"bufio"
 	"errors"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -28,10 +29,14 @@ func main() {
 func startApplication() {
 	// Dealing with Banner or Cover, maybe more in the future (hero?)
 	artStyles := map[string][]string{
-		// artStyle: ["idExtension", "fileExtension", steamExtension, googleExtensionX, googleExtensionY, steamGridDB]
-		"Banner": []string{"", "", "header.jpg", "460", "215", "dimensions=legacy"},
-		"Cover": []string{"p", ".p", "library_600x900_2x.jpg", "600", "900", "dimensions=600x900"},
+		// artStyle: ["idExtension", "fileExtension", steamExtension, dimensionX, dimensionY]
+		"Banner": []string{"", "", "header.jpg", "460", "215"},
+		"Cover": []string{"p", ".p", "library_600x900_2x.jpg", "600", "900"},
 	}
+
+	steamGridDBApiKey := flag.String("steamgriddb", "", "Your personal SteamGridDB api key, get one here: https://www.steamgriddb.com/profile/preferences")
+	steamDir := flag.String("steamdir", "", "Path to your steam installation")
+	flag.Parse()
 
 	fmt.Println("Loading overlays...")
 	overlays, err := LoadOverlays(filepath.Join(filepath.Dir(os.Args[0]), "overlays by category"), artStyles)
@@ -45,7 +50,7 @@ func startApplication() {
 	}
 
 	fmt.Println("Looking for Steam directory...\nIf SteamGrid doesn´t find the directory automatically, launch it with an argument linking to the Steam directory.")
-	installationDir, err := GetSteamInstallation()
+	installationDir, err := GetSteamInstallation(*steamDir)
 	if err != nil {
 		errorAndExit(err)
 	}
@@ -63,6 +68,8 @@ func startApplication() {
 	nDownloaded := 0
 	var notFoundsBanner []*Game
 	var notFoundsCover []*Game
+	var steamGridDBBanner []*Game
+	var steamGridDBCover []*Game
 	var searchedGamesBanner []*Game
 	var searchedGamesCover []*Game
 	var failedGamesBanner []*Game
@@ -117,8 +124,12 @@ func startApplication() {
 				// Download if missing.
 				///////////////////////
 				if game.ImageSource == "" {
-					from, err := DownloadImage(gridDir, game, artStyle, artStyleExtensions)
-					if err != nil {
+					from, err := DownloadImage(gridDir, game, artStyle, artStyleExtensions, *steamGridDBApiKey)
+					if err != nil && err.Error() == "401" {
+						// Wrong api key
+						*steamGridDBApiKey = ""
+						fmt.Println("Api key rejected, disabling SteamGridDB.")
+					} else if err != nil {
 						fmt.Println(err.Error())
 					}
 
@@ -135,7 +146,13 @@ func startApplication() {
 						nDownloaded++
 					}
 
-					if from == "search" {
+					if from == "SteamGridDB" {
+						if artStyle == "Banner" {
+							steamGridDBBanner = append(steamGridDBBanner, game)
+						} else if artStyle == "Cover" {
+							steamGridDBCover = append(steamGridDBCover, game)
+						}
+					} else if from == "search" {
 						if artStyle == "Banner" {
 							searchedGamesBanner = append(searchedGamesBanner, game)
 						} else if artStyle == "Cover" {
@@ -192,6 +209,19 @@ func startApplication() {
 			fmt.Printf("* %v (steam id %v, Banner)\n", game.Name, game.ID)
 		}
 		for _, game := range searchedGamesCover {
+			fmt.Printf("* %v (steam id %v, Cover)\n", game.Name, game.ID)
+		}
+
+
+		fmt.Printf("\n\n")
+	}
+
+	if len(steamGridDBBanner) + len(steamGridDBCover) >= 1 {
+		fmt.Printf("%v images were found on SteamGridDB and may not be in full quality or accurate:\n", len(steamGridDBBanner) + len(steamGridDBCover))
+		for _, game := range steamGridDBBanner {
+			fmt.Printf("* %v (steam id %v, Banner)\n", game.Name, game.ID)
+		}
+		for _, game := range steamGridDBCover {
 			fmt.Printf("* %v (steam id %v, Cover)\n", game.Name, game.ID)
 		}
 

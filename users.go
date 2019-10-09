@@ -113,14 +113,13 @@ func GetProfile(user User) (string, error) {
 // GetSteamInstallation Returns the Steam installation directory in Windows. Should work for
 // internationalized systems, 32 and 64 bits and users that moved their
 // ProgramFiles folder. If a folder is given by program parameter, uses that.
-func GetSteamInstallation() (path string, err error) {
-	if len(os.Args) == 2 {
-		argDir := os.Args[1]
-		_, err := os.Stat(argDir)
+func GetSteamInstallation(steamDir string) (path string, err error) {
+	if steamDir != "" {
+		_, err := os.Stat(steamDir)
 		if err == nil {
-			return argDir, nil
+			return steamDir, nil
 		}
-		return "", errors.New("Argument must be a valid Steam directory, or empty for auto detection. Got: " + argDir)
+		return "", errors.New("Argument must be a valid Steam directory, or empty for auto detection. Got: " + steamDir)
 	}
 
 	currentUser, err := user.Current()
