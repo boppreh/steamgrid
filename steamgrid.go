@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 )
 
@@ -27,11 +28,20 @@ func main() {
 }
 
 func startApplication() {
-	// Dealing with Banner or Cover, maybe more in the future (hero?)
 	artStyles := map[string][]string{
+		// BannerLQ: 460 x 215
+		// BannerHQ: 920 x 430
+		// CoverLQ: 300 x 450
+		// CoverHQ: 600 x 900
+		// HeroLQ: 1920 x 620
+		// HeroHQ: 3840 x 1240
+		// LogoLQ: 640 x 360
+		// LogoHQ: 1280 x 720
 		// artStyle: ["idExtension", "fileExtension", steamExtension, dimensionX, dimensionY]
 		"Banner": []string{"", "", "header.jpg", "460", "215"},
 		"Cover": []string{"p", ".p", "library_600x900_2x.jpg", "600", "900"},
+		"Hero": []string{"_hero", ".hero", "library_hero.jpg" , "3840", "1240"},
+		"Logo": []string{"_logo", ".logo", "logo.png", "1280", "720"},
 	}
 
 	steamGridDBApiKey := flag.String("steamgriddb", "", "Your personal SteamGridDB api key, get one here: https://www.steamgriddb.com/profile/preferences")
@@ -67,16 +77,36 @@ func startApplication() {
 
 	nOverlaysApplied := 0
 	nDownloaded := 0
-	var notFoundsBanner []*Game
-	var notFoundsCover []*Game
-	var steamGridDBBanner []*Game
-	var steamGridDBCover []*Game
-	var IGDBBanner []*Game
-	var IGDBCover []*Game
-	var searchedGamesBanner []*Game
-	var searchedGamesCover []*Game
-	var failedGamesBanner []*Game
-	var failedGamesCover []*Game
+	notFounds := map[string][]*Game{
+		"Banner": []*Game{},
+		"Cover": []*Game{},
+		"Hero": []*Game{},
+		"Logo": []*Game{},
+	}
+	steamGridDB := map[string][]*Game{
+		"Banner": []*Game{},
+		"Cover": []*Game{},
+		"Hero": []*Game{},
+		"Logo": []*Game{},
+	}
+	IGDB := map[string][]*Game{
+		"Banner": []*Game{},
+		"Cover": []*Game{},
+		"Hero": []*Game{},
+		"Logo": []*Game{},
+	}
+	searchedGames := map[string][]*Game{
+		"Banner": []*Game{},
+		"Cover": []*Game{},
+		"Hero": []*Game{},
+		"Logo": []*Game{},
+	}
+	failedGames := map[string][]*Game{
+		"Banner": []*Game{},
+		"Cover": []*Game{},
+		"Hero": []*Game{},
+		"Logo": []*Game{},
+	}
 	var errorMessages []string
 
 	for _, user := range users {
@@ -137,11 +167,7 @@ func startApplication() {
 					}
 
 					if game.ImageSource == "" {
-						if artStyle == "Banner" {
-							notFoundsBanner = append(notFoundsBanner, game)
-						} else if artStyle == "Cover" {
-							notFoundsCover = append(notFoundsCover, game)
-						}
+						notFounds[artStyle] = append(notFounds[artStyle], game)
 						fmt.Printf("%v not found\n", artStyle)
 						// Game has no image, skip it.
 						continue
@@ -151,23 +177,11 @@ func startApplication() {
 
 					switch from {
 					case "IGDB":
-						if artStyle == "Banner" {
-							IGDBBanner = append(IGDBBanner, game)
-						} else if artStyle == "Cover" {
-							IGDBCover = append(IGDBCover, game)
-						}
+						IGDB[artStyle] = append(IGDB[artStyle], game)
 					case "SteamGridDB":
-						if artStyle == "Banner" {
-							steamGridDBBanner = append(steamGridDBBanner, game)
-						} else if artStyle == "Cover" {
-							steamGridDBCover = append(steamGridDBCover, game)
-						}
+						steamGridDB[artStyle] = append(steamGridDB[artStyle], game)
 					case "search":
-						if artStyle == "Banner" {
-							searchedGamesBanner = append(searchedGamesBanner, game)
-						} else if artStyle == "Cover" {
-							searchedGamesCover = append(searchedGamesCover, game)
-						}
+						searchedGames[artStyle] = append(searchedGames[artStyle], game)
 					}
 				}
 				fmt.Printf("%v found from %v\n", artStyle, game.ImageSource)
@@ -178,15 +192,13 @@ func startApplication() {
 				// Expecting name.artExt.imgExt:
 				// Banner: favorites.png
 				// Cover: favorites.p.png
+				// Hero: favorites.hero.png
+				// Logo: favorites.logo.png
 				///////////////////////
 				err := ApplyOverlay(game, overlays, artStyleExtensions)
 				if err != nil {
 					print(err.Error(), "\n")
-					if artStyle == "Banner" {
-						failedGamesBanner = append(failedGamesBanner, game)
-					} else if artStyle == "Cover" {
-						failedGamesCover = append(failedGamesCover, game)
-					}
+					failedGames[artStyle] = append(failedGames[artStyle], game)
 					errorMessages = append(errorMessages, err.Error())
 				}
 				if game.OverlayImageBytes != nil {
@@ -205,6 +217,15 @@ func startApplication() {
 
 				imagePath := filepath.Join(gridDir, game.ID + artStyleExtensions[0] + game.ImageExt)
 				err = ioutil.WriteFile(imagePath, game.OverlayImageBytes, 0666)
+
+				// Copy with legacy naming for Big Picture mode
+				if artStyle == "Banner" {
+					id, err := strconv.ParseUint(game.ID, 10, 64)
+					if err == nil {
+						imagePath := filepath.Join(gridDir, strconv.FormatUint(id<<32|0x02000000, 10) + artStyleExtensions[0] + game.ImageExt)
+						err = ioutil.WriteFile(imagePath, game.OverlayImageBytes, 0666)
+					}
+				}
 				if err != nil {
 					fmt.Printf("Failed to write image for %v (%v) because: %v\n", game.Name, artStyle, err.Error())
 				}
@@ -213,64 +234,58 @@ func startApplication() {
 	}
 
 	fmt.Printf("\n\n%v images downloaded and %v overlays applied.\n\n", nDownloaded, nOverlaysApplied)
-	if len(searchedGamesBanner) + len(searchedGamesCover) >= 1 {
-		fmt.Printf("%v images were found with a Google search and may not be accurate:\n", len(searchedGamesBanner) + len(searchedGamesCover))
-		for _, game := range searchedGamesBanner {
-			fmt.Printf("* %v (steam id %v, Banner)\n", game.Name, game.ID)
-		}
-		for _, game := range searchedGamesCover {
-			fmt.Printf("* %v (steam id %v, Cover)\n", game.Name, game.ID)
-		}
-
-
-		fmt.Printf("\n\n")
-	}
-
-	if len(IGDBBanner) + len(IGDBCover) >= 1 {
-		fmt.Printf("%v images were found on IGDB and may not be in full quality or accurate:\n", len(IGDBBanner) + len(IGDBCover))
-		for _, game := range IGDBBanner {
-			fmt.Printf("* %v (steam id %v, Banner)\n", game.Name, game.ID)
-		}
-		for _, game := range IGDBCover {
-			fmt.Printf("* %v (steam id %v, Cover)\n", game.Name, game.ID)
-		}
-
-
-		fmt.Printf("\n\n")
-	}
-
-	if len(steamGridDBBanner) + len(steamGridDBCover) >= 1 {
-		fmt.Printf("%v images were found on SteamGridDB and may not be in full quality or accurate:\n", len(steamGridDBBanner) + len(steamGridDBCover))
-		for _, game := range steamGridDBBanner {
-			fmt.Printf("* %v (steam id %v, Banner)\n", game.Name, game.ID)
-		}
-		for _, game := range steamGridDBCover {
-			fmt.Printf("* %v (steam id %v, Cover)\n", game.Name, game.ID)
-		}
-
-
-		fmt.Printf("\n\n")
-	}
-
-	if len(notFoundsBanner) + len(notFoundsCover) >= 1 {
-		fmt.Printf("%v images could not be found anywhere:\n", len(notFoundsBanner) + len(notFoundsCover))
-		for _, game := range notFoundsBanner {
-			fmt.Printf("- %v (id %v, Banner)\n", game.Name, game.ID)
-		}
-		for _, game := range notFoundsCover {
-			fmt.Printf("- %v (id %v, Cover)\n", game.Name, game.ID)
+	if len(searchedGames["Banner"]) + len(searchedGames["Cover"]) + len(searchedGames["Hero"]) + len(searchedGames["Logo"]) >= 1 {
+		fmt.Printf("%v images were found with a Google search and may not be accurate:\n", len(searchedGames["Banner"]) + len(searchedGames["Cover"]) + len(searchedGames["Hero"]) + len(searchedGames["Logo"]))
+		for artStyle, games := range searchedGames {
+			for _, game := range games {
+				fmt.Printf("* %v (steam id %v, %v)\n", game.Name, game.ID, artStyle)
+			}
 		}
 
 		fmt.Printf("\n\n")
 	}
 
-	if len(failedGamesBanner) + len(failedGamesCover) >= 1 {
-		fmt.Printf("%v images were found but had errors and could not be overlaid:\n", len(failedGamesBanner) + len(failedGamesCover))
-		for i, game := range failedGamesBanner {
-			fmt.Printf("- %v (id %v, Banner) (%v)\n", game.Name, game.ID, errorMessages[i])
+	if len(IGDB["Banner"]) + len(IGDB["Cover"]) >= 1 {
+		fmt.Printf("%v images were found on IGDB and may not be in full quality or accurate:\n", len(IGDB["Banner"]) + len(IGDB["Cover"]))
+		for artStyle, games := range IGDB {
+			for _, game := range games {
+				fmt.Printf("* %v (steam id %v, %v)\n", game.Name, game.ID, artStyle)
+			}
 		}
-		for i, game := range failedGamesCover {
-			fmt.Printf("- %v (id %v, Cover) (%v)\n", game.Name, game.ID, errorMessages[i])
+
+		fmt.Printf("\n\n")
+	}
+
+	if len(steamGridDB["Banner"]) + len(steamGridDB["Cover"]) + len(steamGridDB["Hero"]) + len(steamGridDB["Logo"]) >= 1 {
+		fmt.Printf("%v images were found on SteamGridDB and may not be in full quality or accurate:\n", len(steamGridDB["Banner"]) + len(steamGridDB["Cover"]) + len(steamGridDB["Hero"]) + len(steamGridDB["Logo"]))
+		for artStyle, games := range steamGridDB {
+			for _, game := range games {
+				fmt.Printf("* %v (steam id %v, %v)\n", game.Name, game.ID, artStyle)
+			}
+		}
+
+		fmt.Printf("\n\n")
+	}
+
+	if len(notFounds["Banner"]) + len(notFounds["Cover"]) + len(notFounds["Hero"]) + len(notFounds["Logo"]) >= 1 {
+		fmt.Printf("%v images could not be found anywhere:\n", len(notFounds["Banner"]) + len(notFounds["Cover"]) + len(notFounds["Hero"]) + len(notFounds["Logo"]))
+		for artStyle, games := range notFounds {
+			for _, game := range games {
+				fmt.Printf("- %v (id %v, %v)\n", game.Name, game.ID, artStyle)
+			}
+		}
+
+		fmt.Printf("\n\n")
+	}
+
+	if len(failedGames["Banner"]) + len(failedGames["Cover"]) + len(failedGames["Hero"]) + len(failedGames["Logo"]) >= 1 {
+		fmt.Printf("%v images were found but had errors and could not be overlaid:\n", len(failedGames["Banner"]) + len(failedGames["Cover"]) + len(failedGames["Hero"]) + len(failedGames["Logo"]))
+		for artStyle, games := range failedGames {
+			var i = 0
+			for _, game := range games {
+				fmt.Printf("- %v (id %v, %v) (%v)\n", game.Name, game.ID, artStyle, errorMessages[i])
+				i++
+			}
 		}
 
 		fmt.Printf("\n\n")

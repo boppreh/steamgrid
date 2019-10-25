@@ -316,7 +316,7 @@ func getImageAlternatives(game *Game, artStyle string, artStyleExtensions []stri
 	}
 
 	url := ""
-	if steamGridDBApiKey != "" && url == "" {
+	if (artStyle == "Cover" || artStyle == "Banner") && steamGridDBApiKey != "" && url == "" {
 		from = "SteamGridDB"
 		url, err = getSteamGridDBImage(game, artStyleExtensions, steamGridDBApiKey)
 		if err != nil {

@@ -93,9 +93,6 @@ func ApplyOverlay(game *Game, overlays map[string]image.Image, artStyleExtension
 		}
 
 		// We expect overlays in the correct format so we have to scale the image if it doesn't fit
-		// BannerLQ: 460 x 215
-		// BannerHQ: 920 x 430
-		// Cover: 600 x 900
 		overlaySize := overlayImage.Bounds().Max
 		result := image.NewRGBA(image.Rect(0, 0, overlaySize.X, overlaySize.Y))
 		originalSize := gameImage.Bounds().Max
