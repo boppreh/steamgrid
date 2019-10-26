@@ -38,8 +38,8 @@ func startApplication() {
 		// LogoLQ: 640 x 360
 		// LogoHQ: 1280 x 720
 		// artStyle: ["idExtension", "fileExtension", steamExtension, dimensionX, dimensionY]
-		"Banner": []string{"", "", "header.jpg", "460", "215"},
-		"Cover": []string{"p", ".p", "library_600x900_2x.jpg", "600", "900"},
+		"Banner": []string{"", ".banner", "header.jpg", "460", "215"},
+		"Cover": []string{"p", ".cover", "library_600x900_2x.jpg", "600", "900"},
 		"Hero": []string{"_hero", ".hero", "library_hero.jpg" , "3840", "1240"},
 		"Logo": []string{"_logo", ".logo", "logo.png", "1280", "720"},
 	}
