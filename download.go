@@ -131,70 +131,75 @@ func getSteamGridDBImage(game *Game, artStyleExtensions []string, steamGridDBApi
 	// "alternate" "blurred" "white_logo" "material" "no_logo"
 	artTypes := []string{"alternate"}
 	filter := "?styles=" + strings.Join(artTypes, ",")
-	filter = filter + "&dimensions=" + artStyleExtensions[3] + "x" + artStyleExtensions[4]
 
-	// Try with game.ID which is probably steams appID
-	url := SteamGridDBBaseURL + "/grids/steam/" + game.ID + filter
-	responseBytes, err := SteamGridDBGetRequest(url, steamGridDBApiKey)
-	var jsonResponse SteamGridDBResponse
- 	if err != nil && err.Error() == "401" {
+	// Try for HQ, then for LQ
+	// It's possible to request both dimensions in one go but that'll give us scrambled results with no indicator which result has which size.
+	for i := 0; i < 3; i += 2 {
+		dimensions := filter + "&dimensions=" + artStyleExtensions[3 + i] + "x" + artStyleExtensions[4 + i]
+
+		// Try with game.ID which is probably steams appID
+		url := SteamGridDBBaseURL + "/grids/steam/" + game.ID + dimensions
+		responseBytes, err := SteamGridDBGetRequest(url, steamGridDBApiKey)
+		var jsonResponse SteamGridDBResponse
+
 		// Authorization token is missing or invalid
-		return "", errors.New("SteamGridDB authorization token is missing or invalid")
-	} else if err != nil && err.Error() == "404" {
+	 	if err != nil && err.Error() == "401" {
+			return "", errors.New("SteamGridDB authorization token is missing or invalid")
 		// Could not find game with that id
+		} else if err != nil && err.Error() == "404" {
+			// Try searching for the name…
+			url = SteamGridDBBaseURL + "/search/autocomplete/" + game.Name + dimensions
+			responseBytes, err = SteamGridDBGetRequest(url, steamGridDBApiKey)
+			if err != nil {
+				return "", err
+			}
 
-		// Try searching for the name…
-		url = SteamGridDBBaseURL + "/search/autocomplete/" + game.Name + filter
-		responseBytes, err = SteamGridDBGetRequest(url, steamGridDBApiKey)
-		if err != nil {
-			return "", err
-		}
+			var jsonSearchResponse SteamGridDBSearchResponse
+			err = json.Unmarshal(responseBytes, &jsonSearchResponse)
+			if err != nil {
+				return "", errors.New("Best search match doesn't has a " + strings.Join(artTypes, ",") + " type")
+			}
 
-		var jsonSearchResponse SteamGridDBSearchResponse
-		err = json.Unmarshal(responseBytes, &jsonSearchResponse)
-		if err != nil {
-			return "", errors.New("Best search match doesn't has a " + strings.Join(artTypes, ",") + " type")
-		}
+			SteamGridDBGameId := -1
+			if jsonSearchResponse.Success && len(jsonSearchResponse.Data) >= 1 {
+				for _, n := range jsonSearchResponse.Data[0].Types {
+					for _, m := range artTypes {
+						if n == m {
+							// This game has at least one of our requested artTypes
+							SteamGridDBGameId = jsonSearchResponse.Data[0].Id
+							break
+						}
+					}
 
-		SteamGridDBGameId := -1
-		if jsonSearchResponse.Success && len(jsonSearchResponse.Data) >= 1 {
-			for _, n := range jsonSearchResponse.Data[0].Types {
-				for _, m := range artTypes {
-					if n == m {
-						// This game has at least one of our requested artTypes
-						SteamGridDBGameId = jsonSearchResponse.Data[0].Id
+					if SteamGridDBGameId != -1 {
 						break
 					}
 				}
-
-				if SteamGridDBGameId != -1 {
-					break
-				}
 			}
+
+			if SteamGridDBGameId == -1 {
+				return "", nil
+			}
+
+
+			// …and get the url of the top result.
+			url = SteamGridDBBaseURL + "/grids/game/" + strconv.Itoa(SteamGridDBGameId) + dimensions
+			responseBytes, err = SteamGridDBGetRequest(url, steamGridDBApiKey)
+			if err != nil {
+				return "", err
+			}
+		} else if err != nil {
+			return "", err
 		}
 
-		if SteamGridDBGameId == -1 {
-			return "", nil
-		}
-
-
-		// …and get the url of the top result.
-		url = SteamGridDBBaseURL + "/grids/game/" + strconv.Itoa(SteamGridDBGameId) + filter
-		responseBytes, err = SteamGridDBGetRequest(url, steamGridDBApiKey)
+		err = json.Unmarshal(responseBytes, &jsonResponse)
 		if err != nil {
 			return "", err
 		}
-	} else if err != nil {
-		return "", err
-	}
 
-	err = json.Unmarshal(responseBytes, &jsonResponse)
-	if err != nil {
-		return "", err
-	}
-
-	if jsonResponse.Success && len(jsonResponse.Data) >= 1 {
-		return jsonResponse.Data[0].Url, nil
+		if jsonResponse.Success && len(jsonResponse.Data) >= 1 {
+			return jsonResponse.Data[0].Url, nil
+		}
 	}
 
 	return "", nil

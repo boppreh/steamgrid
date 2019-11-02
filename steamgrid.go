@@ -37,11 +37,11 @@ func startApplication() {
 		// HeroHQ: 3840 x 1240
 		// LogoLQ: 640 x 360
 		// LogoHQ: 1280 x 720
-		// artStyle: ["idExtension", "fileExtension", steamExtension, dimensionX, dimensionY]
-		"Banner": []string{"", ".banner", "header.jpg", "460", "215"},
-		"Cover": []string{"p", ".cover", "library_600x900_2x.jpg", "600", "900"},
-		"Hero": []string{"_hero", ".hero", "library_hero.jpg" , "3840", "1240"},
-		"Logo": []string{"_logo", ".logo", "logo.png", "1280", "720"},
+		// artStyle: ["idExtension", "nameExtension", steamExtension, dimXHQ, dimYHQ, dimXLQ, dimYLQ]
+		"Banner": []string{"", ".banner", "header.jpg", "920", "430", "460", "215"},
+		"Cover": []string{"p", ".cover", "library_600x900_2x.jpg", "600", "900", "300", "450"},
+		"Hero": []string{"_hero", ".hero", "library_hero.jpg" , "3840", "1240", "1920", "620"},
+		"Logo": []string{"_logo", ".logo", "logo.png", "1280", "720", "640", "360"},
 	}
 
 	steamGridDBApiKey := flag.String("steamgriddb", "", "Your personal SteamGridDB api key, get one here: https://www.steamgriddb.com/profile/preferences")
