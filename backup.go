@@ -3,10 +3,13 @@ package main
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
+	"runtime"
+	"unicode"
 )
 
 // BackupGame if a game has a custom image, backs it up by appending "(original)" to the
@@ -57,6 +60,23 @@ func loadImage(game *Game, sourceName string, imagePath string) error {
 	return err
 }
 
+// https://wenzr.wordpress.com/2018/04/09/go-glob-case-insensitive/
+func InsensitiveFilepath(path string) string {
+	if runtime.GOOS == "windows" {
+		return path
+	}
+
+	p := ""
+	for _, r := range path {
+		if unicode.IsLetter(r) {
+			p += fmt.Sprintf("[%c%c]", unicode.ToLower(r), unicode.ToUpper(r))
+		} else {
+			p += string(r)
+		}
+	}
+	return p
+}
+
 func LoadExisting(overridePath string, gridDir string, game *Game, artStyleExtensions []string) {
 	overridenIDs, _ := filepath.Glob(filepath.Join(overridePath, game.ID + artStyleExtensions[0] + ".*"))
 	if overridenIDs != nil && len(overridenIDs) > 0 {
@@ -67,7 +87,7 @@ func LoadExisting(overridePath string, gridDir string, game *Game, artStyleExten
 	if game.Name != "" {
 		re := regexp.MustCompile(`\W+`)
 		globName := re.ReplaceAllString(game.Name, "*")
-		overridenNames, _ := filepath.Glob(filepath.Join(overridePath, globName + artStyleExtensions[1] + ".*"))
+		overridenNames, _ := filepath.Glob(filepath.Join(overridePath, InsensitiveFilepath(globName) + artStyleExtensions[1] + ".*"))
 		if overridenNames != nil && len(overridenNames) > 0 {
 			loadImage(game, "local file in directory games/", overridenNames[0])
 			return
