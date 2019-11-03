@@ -30,7 +30,7 @@ func getGoogleImage(gameName string, artStyleExtensions []string) (string, error
 		return "", nil
 	}
 
-	url := fmt.Sprintf(googleSearchFormat, artStyleExtensions[3], artStyleExtensions[4]) + url.QueryEscape(gameName)
+	url := fmt.Sprintf(googleSearchFormat, artStyleExtensions[5], artStyleExtensions[6]) + url.QueryEscape(gameName)
 
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", url, nil)
