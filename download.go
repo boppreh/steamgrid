@@ -162,19 +162,8 @@ func getSteamGridDBImage(game *Game, artStyleExtensions []string, steamGridDBApi
 
 			SteamGridDBGameId := -1
 			if jsonSearchResponse.Success && len(jsonSearchResponse.Data) >= 1 {
-				for _, n := range jsonSearchResponse.Data[0].Types {
-					for _, m := range artTypes {
-						if n == m {
-							// This game has at least one of our requested artTypes
-							SteamGridDBGameId = jsonSearchResponse.Data[0].Id
-							break
-						}
-					}
-
-					if SteamGridDBGameId != -1 {
-						break
-					}
-				}
+				// First match should be the best one
+				SteamGridDBGameId = jsonSearchResponse.Data[0].Id
 			}
 
 			if SteamGridDBGameId == -1 {
