@@ -18,7 +18,7 @@ import (
 // When all else fails, Google it. Uses the regular web interface. There are
 // two image search APIs, but one is deprecated and doesn't support exact size
 // matching, and the other requires an API key limited to 100 searches a day.
-const googleSearchFormat = `https://www.google.com.br/search?tbs=isz%3Aex%2Ciszw%3A%v%2Ciszh%3A%v&tbm=isch&num=5&q=`
+const googleSearchFormat = `https://www.google.com.br/search?tbs=isz%%3Aex%%2Ciszw%%3A%v%%2Ciszh%%3A%v&tbm=isch&num=5&q=`
 
 // Possible Google result formats
 var googleSearchResultPatterns = []string{`imgurl=(.+?\.(jpeg|jpg|png))&amp;imgrefurl=`, `\"ou\":\"(.+?)\",\"`}
