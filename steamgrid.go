@@ -49,6 +49,8 @@ func startApplication() {
 	steamDir := flag.String("steamdir", "", "Path to your steam installation")
 	// "alternate" "blurred" "white_logo" "material" "no_logo"
 	artTypes := flag.String("types", "alternate", "Comma seperated list of style types to download from SteamGridDB.\nExample: \"white_logo,material\"")
+	skipSteam := flag.Bool("skipsteam", false, "Skip downloads from Steam servers")
+	skipGoogle := flag.Bool("skipgoogle", false, "Skip search and downloads from google")
 	flag.Parse()
 
 	fmt.Println("Loading overlays...")
@@ -159,7 +161,7 @@ func startApplication() {
 				// Download if missing.
 				///////////////////////
 				if game.ImageSource == "" {
-					from, err := DownloadImage(gridDir, game, artStyle, artStyleExtensions, *steamGridDBApiKey, *artTypes, *IGDBApiKey)
+					from, err := DownloadImage(gridDir, game, artStyle, artStyleExtensions, *skipSteam, *steamGridDBApiKey, *artTypes, *IGDBApiKey, *skipGoogle)
 					if err != nil && err.Error() == "SteamGridDB authorization token is missing or invalid" {
 						// Wrong api key
 						*steamGridDBApiKey = ""
