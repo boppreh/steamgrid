@@ -126,19 +126,14 @@ func SteamGridDBGetRequest(url string, steamGridDBApiKey string) ([]byte, error)
 	return responseBytes, nil
 }
 
-func getSteamGridDBImage(game *Game, artStyleExtensions []string, steamGridDBApiKey string) (string, error) {
-	// Specify artType:
-	// "alternate" "blurred" "white_logo" "material" "no_logo"
-	artTypes := []string{"alternate"}
-	filter := "?styles=" + strings.Join(artTypes, ",")
-
+func getSteamGridDBImage(game *Game, artStyleExtensions []string, steamGridDBApiKey string, artTypes string) (string, error) {
 	// Try for HQ, then for LQ
 	// It's possible to request both dimensions in one go but that'll give us scrambled results with no indicator which result has which size.
 	for i := 0; i < 3; i += 2 {
-		dimensions := filter + "&dimensions=" + artStyleExtensions[3 + i] + "x" + artStyleExtensions[4 + i]
+		filter := "?styles=" + artTypes + "&dimensions=" + artStyleExtensions[3 + i] + "x" + artStyleExtensions[4 + i]
 
 		// Try with game.ID which is probably steams appID
-		url := SteamGridDBBaseURL + "/grids/steam/" + game.ID + dimensions
+		url := SteamGridDBBaseURL + "/grids/steam/" + game.ID + filter
 		responseBytes, err := SteamGridDBGetRequest(url, steamGridDBApiKey)
 		var jsonResponse SteamGridDBResponse
 
@@ -148,7 +143,7 @@ func getSteamGridDBImage(game *Game, artStyleExtensions []string, steamGridDBApi
 		// Could not find game with that id
 		} else if err != nil && err.Error() == "404" {
 			// Try searching for the name…
-			url = SteamGridDBBaseURL + "/search/autocomplete/" + game.Name + dimensions
+			url = SteamGridDBBaseURL + "/search/autocomplete/" + game.Name + filter
 			responseBytes, err = SteamGridDBGetRequest(url, steamGridDBApiKey)
 			if err != nil {
 				return "", err
@@ -157,7 +152,7 @@ func getSteamGridDBImage(game *Game, artStyleExtensions []string, steamGridDBApi
 			var jsonSearchResponse SteamGridDBSearchResponse
 			err = json.Unmarshal(responseBytes, &jsonSearchResponse)
 			if err != nil {
-				return "", errors.New("Best search match doesn't has a " + strings.Join(artTypes, ",") + " type")
+				return "", errors.New("Best search match doesn't has a " + artTypes + " type")
 			}
 
 			SteamGridDBGameId := -1
@@ -172,7 +167,7 @@ func getSteamGridDBImage(game *Game, artStyleExtensions []string, steamGridDBApi
 
 
 			// …and get the url of the top result.
-			url = SteamGridDBBaseURL + "/grids/game/" + strconv.Itoa(SteamGridDBGameId) + dimensions
+			url = SteamGridDBBaseURL + "/grids/game/" + strconv.Itoa(SteamGridDBGameId) + filter
 			responseBytes, err = SteamGridDBGetRequest(url, steamGridDBApiKey)
 			if err != nil {
 				return "", err
@@ -297,7 +292,7 @@ const steamCdnURLFormat = `cdn.akamai.steamstatic.com/steam/apps/%v/`
 // sources. Returns the final response received and a flag indicating if it was
 // from a Google search (useful because we want to log the lower quality
 // images).
-func getImageAlternatives(game *Game, artStyle string, artStyleExtensions []string, steamGridDBApiKey string, IGDBApiKey string) (response *http.Response, from string, err error) {
+func getImageAlternatives(game *Game, artStyle string, artStyleExtensions []string, steamGridDBApiKey string, artTypes string, IGDBApiKey string) (response *http.Response, from string, err error) {
 	from = "steam server"
 	response, err = tryDownload(fmt.Sprintf(akamaiURLFormat + artStyleExtensions[2], game.ID))
 	if err == nil && response != nil {
@@ -312,7 +307,7 @@ func getImageAlternatives(game *Game, artStyle string, artStyleExtensions []stri
 	url := ""
 	if (artStyle == "Cover" || artStyle == "Banner") && steamGridDBApiKey != "" && url == "" {
 		from = "SteamGridDB"
-		url, err = getSteamGridDBImage(game, artStyleExtensions, steamGridDBApiKey)
+		url, err = getSteamGridDBImage(game, artStyleExtensions, steamGridDBApiKey, artTypes)
 		if err != nil {
 			return
 		}
@@ -347,8 +342,8 @@ func getImageAlternatives(game *Game, artStyle string, artStyleExtensions []stri
 // DownloadImage tries to download the game images, saving it in game.ImageBytes. Returns
 // flags indicating if the operation succeeded and if the image downloaded was
 // from a search.
-func DownloadImage(gridDir string, game *Game, artStyle string, artStyleExtensions []string, steamGridDBApiKey string, IGDBApiKey string) (string, error) {
-	response, from, err := getImageAlternatives(game, artStyle, artStyleExtensions, steamGridDBApiKey, IGDBApiKey)
+func DownloadImage(gridDir string, game *Game, artStyle string, artStyleExtensions []string, steamGridDBApiKey string, artTypes string, IGDBApiKey string) (string, error) {
+	response, from, err := getImageAlternatives(game, artStyle, artStyleExtensions, steamGridDBApiKey, artTypes, IGDBApiKey)
 	if response == nil || err != nil {
 		return "", err
 	}
