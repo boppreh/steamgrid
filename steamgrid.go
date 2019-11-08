@@ -51,6 +51,7 @@ func startApplication() {
 	artTypes := flag.String("types", "alternate", "Comma seperated list of style types to download from SteamGridDB.\nExample: \"white_logo,material\"")
 	skipSteam := flag.Bool("skipsteam", false, "Skip downloads from Steam servers")
 	skipGoogle := flag.Bool("skipgoogle", false, "Skip search and downloads from google")
+	nonSteamOnly := flag.Bool("nonsteamonly", false, "Only search artwork for Non-Steam-Games")
 	flag.Parse()
 
 	fmt.Println("Loading overlays...")
@@ -122,7 +123,7 @@ func startApplication() {
 			errorAndExit(err)
 		}
 
-		games := GetGames(user)
+		games := GetGames(user, *nonSteamOnly)
 
 		fmt.Println("Loading existing images and backups...")
 
