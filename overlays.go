@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"golang.org/x/image/draw"
+	"github.com/kettek/apng"
 )
 
 // LoadOverlays from the given dir, returning a map of name -> image.
@@ -72,9 +73,20 @@ func ApplyOverlay(game *Game, overlays map[string]image.Image, artStyleExtension
 		return nil
 	}
 
-	gameImage, _, err := image.Decode(bytes.NewBuffer(game.CleanImageBytes))
-	if err != nil {
-		return err
+	isApng := false
+	var gameImage image.Image
+	apngImage, err := apng.DecodeAll(bytes.NewBuffer(game.CleanImageBytes))
+	if err == nil {
+		if len(apngImage.Frames) > 1 {
+			isApng = true
+		} else {
+			gameImage = apngImage.Frames[0].Image
+		}
+	} else {
+		gameImage, _, err = image.Decode(bytes.NewBuffer(game.CleanImageBytes))
+		if err != nil {
+			return err
+		}
 	}
 
 	applied := false
@@ -92,20 +104,45 @@ func ApplyOverlay(game *Game, overlays map[string]image.Image, artStyleExtension
 			continue
 		}
 
-		// We expect overlays in the correct format so we have to scale the image if it doesn't fit
 		overlaySize := overlayImage.Bounds().Max
-		result := image.NewRGBA(image.Rect(0, 0, overlaySize.X, overlaySize.Y))
-		originalSize := gameImage.Bounds().Max
-		if (originalSize.X != overlaySize.X && originalSize.Y != overlaySize.Y) {
-			// scale to fit overlay
-			// https://godoc.org/golang.org/x/image/draw#Kernel.Scale
-			draw.ApproxBiLinear.Scale(result, result.Bounds(), gameImage, gameImage.Bounds(), draw.Over, nil)
+
+		if isApng {
+			originalSize := apngImage.Frames[0].Image.Bounds().Max
+
+			for i, frame := range apngImage.Frames {
+				// Scale overlay to imageSize so the images won't get that huge…
+				overlayScaled := image.NewRGBA(image.Rect(0, 0, originalSize.X, originalSize.Y))
+				result := image.NewRGBA(image.Rect(0, 0, originalSize.X, originalSize.Y))
+				if (originalSize.X != overlaySize.X && originalSize.Y != overlaySize.Y) {
+					// https://godoc.org/golang.org/x/image/draw#Kernel.Scale
+					draw.ApproxBiLinear.Scale(overlayScaled, overlayScaled.Bounds(), overlayImage, overlayImage.Bounds(), draw.Over, nil)
+				} else {
+					draw.Draw(overlayScaled, overlayScaled.Bounds(), overlayImage, image.ZP, draw.Src)
+				}
+				// No idea why these offsets are negative:
+				draw.Draw(result, result.Bounds(), frame.Image, image.Point{0 - frame.XOffset, 0 - frame.YOffset}, draw.Over)
+				draw.Draw(result, result.Bounds(), overlayScaled, image.Point{0, 0}, draw.Over)
+				apngImage.Frames[i].Image = result
+				apngImage.Frames[i].XOffset = 0
+				apngImage.Frames[i].YOffset = 0
+			}
+			applied = true
 		} else {
-			draw.Draw(result, result.Bounds(), gameImage, image.ZP, draw.Src)
+			originalSize := gameImage.Bounds().Max
+
+			// We expect overlays in the correct format so we have to scale the image if it doesn't fit
+			result := image.NewRGBA(image.Rect(0, 0, overlaySize.X, overlaySize.Y))
+			if (originalSize.X != overlaySize.X && originalSize.Y != overlaySize.Y) {
+				// scale to fit overlay
+				// https://godoc.org/golang.org/x/image/draw#Kernel.Scale
+				draw.ApproxBiLinear.Scale(result, result.Bounds(), gameImage, gameImage.Bounds(), draw.Over, nil)
+			} else {
+				draw.Draw(result, result.Bounds(), gameImage, image.ZP, draw.Src)
+			}
+			draw.Draw(result, result.Bounds(), overlayImage, image.Point{0, 0}, draw.Over)
+			gameImage = result
+			applied = true
 		}
-		draw.Draw(result, result.Bounds(), overlayImage, image.Point{0, 0}, draw.Over)
-		gameImage = result
-		applied = true
 	}
 
 	if !applied {
@@ -115,6 +152,8 @@ func ApplyOverlay(game *Game, overlays map[string]image.Image, artStyleExtension
 	buf := new(bytes.Buffer)
 	if game.ImageExt == ".jpg" || game.ImageExt == ".jpeg" {
 		err = jpeg.Encode(buf, gameImage, &jpeg.Options{95})
+	} else if game.ImageExt == ".png" && isApng {
+		err = apng.Encode(buf, apngImage)
 	} else if game.ImageExt == ".png" {
 		err = png.Encode(buf, gameImage)
 	}
