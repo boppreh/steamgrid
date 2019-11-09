@@ -125,6 +125,7 @@ func ApplyOverlay(game *Game, overlays map[string]image.Image, artStyleExtension
 				apngImage.Frames[i].Image = result
 				apngImage.Frames[i].XOffset = 0
 				apngImage.Frames[i].YOffset = 0
+				apngImage.Frames[i].BlendOp = apng.BLEND_OP_OVER
 			}
 			applied = true
 		} else {
