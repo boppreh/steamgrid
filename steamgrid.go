@@ -48,11 +48,15 @@ func startApplication() {
 	IGDBApiKey := flag.String("igdb", "", "Your personal IGDB api key, get one here: https://api.igdb.com/signup")
 	steamDir := flag.String("steamdir", "", "Path to your steam installation")
 	// "alternate" "blurred" "white_logo" "material" "no_logo"
-	artTypes := flag.String("types", "alternate", "Comma seperated list of style types to download from SteamGridDB.\nExample: \"white_logo,material\"")
+	steamGridStyles := flag.String("styles", "alternate", "Comma seperated list of styles to download from SteamGridDB.\nExample: \"white_logo,material\"")
+	// "static" "animated"
+	steamGridTypes := flag.String("types", "static", "Comma seperated list of types to download from SteamGridDB.\nExample: \"static,animated\"")
 	skipSteam := flag.Bool("skipsteam", false, "Skip downloads from Steam servers")
 	skipGoogle := flag.Bool("skipgoogle", false, "Skip search and downloads from google")
 	nonSteamOnly := flag.Bool("nonsteamonly", false, "Only search artwork for Non-Steam-Games")
 	flag.Parse()
+
+	steamGridFilter := "?styles=" + *steamGridStyles + "&types=" + *steamGridTypes
 
 	fmt.Println("Loading overlays...")
 	overlays, err := LoadOverlays(filepath.Join(filepath.Dir(os.Args[0]), "overlays by category"), artStyles)
@@ -162,7 +166,7 @@ func startApplication() {
 				// Download if missing.
 				///////////////////////
 				if game.ImageSource == "" {
-					from, err := DownloadImage(gridDir, game, artStyle, artStyleExtensions, *skipSteam, *steamGridDBApiKey, *artTypes, *IGDBApiKey, *skipGoogle)
+					from, err := DownloadImage(gridDir, game, artStyle, artStyleExtensions, *skipSteam, *steamGridDBApiKey, steamGridFilter, *IGDBApiKey, *skipGoogle)
 					if err != nil && err.Error() == "SteamGridDB authorization token is missing or invalid" {
 						// Wrong api key
 						*steamGridDBApiKey = ""
