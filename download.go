@@ -133,22 +133,30 @@ func getSteamGridDBImage(game *Game, artStyleExtensions []string, steamGridDBApi
 		filter := steamGridFilter + "&dimensions=" + artStyleExtensions[3 + i] + "x" + artStyleExtensions[4 + i]
 
 		// Try with game.ID which is probably steams appID
-		baseUrl := SteamGridDBBaseURL
+		var baseUrl string
 		switch artStyleExtensions[1] {
 		case ".banner":
-			baseUrl = baseUrl + "/grids"
+			baseUrl = SteamGridDBBaseURL + "/grids"
 		case ".cover":
-			baseUrl = baseUrl + "/grids"
+			baseUrl = SteamGridDBBaseURL + "/grids"
 		case ".hero":
-			baseUrl = baseUrl + "/heroes"
+			baseUrl = SteamGridDBBaseURL + "/heroes"
 		case ".logo":
 			// not yet supported
 			return "", nil
 		}
 		url := baseUrl + "/steam/" + game.ID + filter
 
-		responseBytes, err := SteamGridDBGetRequest(url, steamGridDBApiKey)
 		var jsonResponse SteamGridDBResponse
+		var responseBytes []byte
+		var err error
+
+		// Skip requests with appID for custom games
+		if !game.Custom {
+			responseBytes, err = SteamGridDBGetRequest(url, steamGridDBApiKey)
+		} else {
+			err = errors.New("404")
+		}
 
 		// Authorization token is missing or invalid
 	 	if err != nil && err.Error() == "401" {

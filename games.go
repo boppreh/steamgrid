@@ -12,7 +12,7 @@ import (
 
 // Game in a steam library. May or may not be installed.
 type Game struct {
-	// Official Steam id.
+	// Official appID or custom shortcut ID
 	ID string
 	// Warning, may contain Unicode characters.
 	Name string
@@ -26,6 +26,8 @@ type Game struct {
 	OverlayImageBytes []byte
 	// Description of where the image was found (backup, official, search).
 	ImageSource string
+	// Is custom shortcut?
+	Custom bool
 }
 
 // Pattern of game declarations in the public profile. It's actually JSON
@@ -47,7 +49,7 @@ func addGamesFromProfile(user User, games map[string]*Game) (err error) {
 		gameID := groups[1]
 		gameName := groups[2]
 		tags := []string{""}
-		games[gameID] = &Game{gameID, gameName, tags, "", nil, nil, ""}
+		games[gameID] = &Game{gameID, gameName, tags, "", nil, nil, "", false}
 	}
 
 	return
@@ -85,7 +87,7 @@ func addUnknownGames(user User, games map[string]*Game) {
 				// If for some reason it wasn't included in the profile, create a new
 				// entry for it now. Unfortunately we don't have a name.
 				gameName := ""
-				games[gameID] = &Game{gameID, gameName, []string{tag}, "", nil, nil, ""}
+				games[gameID] = &Game{gameID, gameName, []string{tag}, "", nil, nil, "", false}
 			}
 		}
 	}
@@ -116,7 +118,7 @@ func addNonSteamGames(user User, games map[string]*Game) {
 		uniqueName := bytes.Join([][]byte{target, gameName}, []byte(""))
 		// Does IEEE CRC32 of target concatenated with gameName. No idea why Steam chose this operation.
 		gameID := strconv.FormatUint(uint64(crc32.ChecksumIEEE(uniqueName)) | 0x80000000, 10)
-		game := Game{gameID, string(gameName), []string{}, "", nil, nil, ""}
+		game := Game{gameID, string(gameName), []string{}, "", nil, nil, "", true}
 		games[gameID] = &game
 
 		tagsText := gameGroups[3]
