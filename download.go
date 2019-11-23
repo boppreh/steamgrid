@@ -166,7 +166,9 @@ func getSteamGridDBImage(game *Game, artStyleExtensions []string, steamGridDBApi
 			// Try searching for the name…
 			url = SteamGridDBBaseURL + "/search/autocomplete/" + game.Name + filter
 			responseBytes, err = SteamGridDBGetRequest(url, steamGridDBApiKey)
-			if err != nil {
+			if err != nil && err.Error() == "401" {
+				return "", errors.New("SteamGridDB authorization token is missing or invalid")
+			} else if err != nil {
 				return "", err
 			}
 
