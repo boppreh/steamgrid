@@ -12,7 +12,7 @@ import (
 
 // Game in a steam library. May or may not be installed.
 type Game struct {
-	// Official Steam id.
+	// Official appID or custom shortcut ID
 	ID string
 	// Warning, may contain Unicode characters.
 	Name string
@@ -26,6 +26,8 @@ type Game struct {
 	OverlayImageBytes []byte
 	// Description of where the image was found (backup, official, search).
 	ImageSource string
+	// Is custom shortcut?
+	Custom bool
 }
 
 // Pattern of game declarations in the public profile. It's actually JSON
@@ -47,7 +49,7 @@ func addGamesFromProfile(user User, games map[string]*Game) (err error) {
 		gameID := groups[1]
 		gameName := groups[2]
 		tags := []string{""}
-		games[gameID] = &Game{gameID, gameName, tags, "", nil, nil, ""}
+		games[gameID] = &Game{gameID, gameName, tags, "", nil, nil, "", false}
 	}
 
 	return
@@ -85,7 +87,7 @@ func addUnknownGames(user User, games map[string]*Game) {
 				// If for some reason it wasn't included in the profile, create a new
 				// entry for it now. Unfortunately we don't have a name.
 				gameName := ""
-				games[gameID] = &Game{gameID, gameName, []string{tag}, "", nil, nil, ""}
+				games[gameID] = &Game{gameID, gameName, []string{tag}, "", nil, nil, "", false}
 			}
 		}
 	}
@@ -108,17 +110,15 @@ func addNonSteamGames(user User, games map[string]*Game) {
 
 	// The actual binary format is known, but using regexes is way easier than
 	// parsing the entire file. If I run into any problems I'll replace this.
-	gamePattern := regexp.MustCompile("(?i)appname\x00(.+?)\x00\x01exe\x00(.+?)\x00\x01.+?\x00tags\x00(.*?)\x08\x08")
+	gamePattern := regexp.MustCompile("(?i)\x00\x01appname\x00(.+?)\x00\x01exe\x00(.+?)\x00\x01.+?\x00tags\x00\x01(.*?)\x08\x08")
 	tagsPattern := regexp.MustCompile("\\d\x00(.+?)\x00")
 	for _, gameGroups := range gamePattern.FindAllSubmatch(shortcutBytes, -1) {
 		gameName := gameGroups[1]
 		target := gameGroups[2]
 		uniqueName := bytes.Join([][]byte{target, gameName}, []byte(""))
-		// Does IEEE CRC32 of target concatenated with gameName, then convert
-		// to 64bit Steam ID. No idea why Steam chose this operation.
-		top := uint64(crc32.ChecksumIEEE(uniqueName)) | 0x80000000
-		gameID := strconv.FormatUint(top<<32|0x02000000, 10)
-		game := Game{gameID, string(gameName), []string{}, "", nil, nil, ""}
+		// Does IEEE CRC32 of target concatenated with gameName. No idea why Steam chose this operation.
+		gameID := strconv.FormatUint(uint64(crc32.ChecksumIEEE(uniqueName)) | 0x80000000, 10)
+		game := Game{gameID, string(gameName), []string{}, "", nil, nil, "", true}
 		games[gameID] = &game
 
 		tagsText := gameGroups[3]
@@ -131,11 +131,13 @@ func addNonSteamGames(user User, games map[string]*Game) {
 
 // GetGames returns all games from a given user, using both the public profile and local
 // files to gather the data. Returns a map of game by ID.
-func GetGames(user User) map[string]*Game {
+func GetGames(user User, nonSteamOnly bool) map[string]*Game {
 	games := make(map[string]*Game, 0)
 
-	addGamesFromProfile(user, games)
-	addUnknownGames(user, games)
+	if !nonSteamOnly {
+		addGamesFromProfile(user, games)
+		addUnknownGames(user, games)
+	}
 	addNonSteamGames(user, games)
 
 	return games
