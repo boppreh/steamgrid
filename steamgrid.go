@@ -55,6 +55,12 @@ func startApplication() {
 	skipGoogle := flag.Bool("skipgoogle", false, "Skip search and downloads from google")
 	nonSteamOnly := flag.Bool("nonsteamonly", false, "Only search artwork for Non-Steam-Games")
 	flag.Parse()
+	if flag.NArg() == 1 {
+		steamDir = &flag.Args()[0]
+	} else if flag.NArg() >= 2 {
+		flag.Usage()
+		os.Exit(1)
+	}
 
 	steamGridFilter := "?styles=" + *steamGridStyles + "&types=" + *steamGridTypes
 
