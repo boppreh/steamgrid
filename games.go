@@ -110,8 +110,8 @@ func addNonSteamGames(user User, games map[string]*Game) {
 
 	// The actual binary format is known, but using regexes is way easier than
 	// parsing the entire file. If I run into any problems I'll replace this.
-	gamePattern := regexp.MustCompile("(?i)\x00\x01appname\x00(.+?)\x00\x01exe\x00(.+?)\x00\x01.+?\x00tags\x00\x01(.*?)\x08\x08")
-	tagsPattern := regexp.MustCompile("\\d\x00(.+?)\x00")
+	gamePattern := regexp.MustCompile("(?i)\x00\x01appname\x00([^\x08]+?)\x00\x01exe\x00([^\x08]+?)\x00\x01[^\x08]+?\x00tags\x00(?:\x01([^\x08]+?)|)\x08\x08")
+	tagsPattern := regexp.MustCompile("\\d\x00([^\x00\x01\x08]+?)\x00")
 	for _, gameGroups := range gamePattern.FindAllSubmatch(shortcutBytes, -1) {
 		gameName := gameGroups[1]
 		target := gameGroups[2]
