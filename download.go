@@ -142,8 +142,7 @@ func getSteamGridDBImage(game *Game, artStyleExtensions []string, steamGridDBApi
 		case ".hero":
 			baseUrl = SteamGridDBBaseURL + "/heroes"
 		case ".logo":
-			// not yet supported
-			return "", nil
+			baseUrl = SteamGridDBBaseURL + "/logos"
 		}
 		url := baseUrl + "/steam/" + game.ID + filter
 
