@@ -53,6 +53,10 @@ func startApplication() {
 	steamGridTypes := flag.String("types", "static", "Comma seperated list of types to download from SteamGridDB.\nExample: \"static,animated\"")
 	skipSteam := flag.Bool("skipsteam", false, "Skip downloads from Steam servers")
 	skipGoogle := flag.Bool("skipgoogle", false, "Skip search and downloads from google")
+	skipBanner := flag.Bool("skipbanner", false, "Skip search and processing banner artwork")
+	skipCover := flag.Bool("skipcover", false, "Skip search and processing cover artwork")
+	skipHero := flag.Bool("skiphero", false, "Skip search and processing hero artwork")
+	skipLogo := flag.Bool("skiplogo", false, "Skip search and processing logo artwork")
 	nonSteamOnly := flag.Bool("nonsteamonly", false, "Only search artwork for Non-Steam-Games")
 	flag.Parse()
 	if flag.NArg() == 1 {
@@ -62,7 +66,23 @@ func startApplication() {
 		os.Exit(1)
 	}
 
+	// Process command line flags
 	steamGridFilter := "?styles=" + *steamGridStyles + "&types=" + *steamGridTypes
+	if *skipBanner {
+		delete(artStyles, "Banner")
+	}
+	if *skipCover {
+		delete(artStyles, "Cover")
+	}
+	if *skipHero {
+		delete(artStyles, "Hero")
+	}
+	if *skipLogo {
+		delete(artStyles, "Logo")
+	}
+	if len(artStyles) == 0 {
+		errorAndExit(errors.New("No artStyes, nothing to do…"))
+	}
 
 	fmt.Println("Loading overlays...")
 	overlays, err := LoadOverlays(filepath.Join(filepath.Dir(os.Args[0]), "overlays by category"), artStyles)
