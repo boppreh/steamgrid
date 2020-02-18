@@ -14,7 +14,7 @@ import (
 
 // BackupGame if a game has a custom image, backs it up by appending "(original)" to the
 // file name.
-func BackupGame(gridDir string, game *Game, artStyleExtensions []string) error {
+func backupGame(gridDir string, game *Game, artStyleExtensions []string) error {
 	if game.CleanImageBytes != nil {
 		return ioutil.WriteFile(getBackupPath(gridDir, game, artStyleExtensions), game.CleanImageBytes, 0666)
 	}
@@ -25,17 +25,17 @@ func getBackupPath(gridDir string, game *Game, artStyleExtensions []string) stri
 	hash := sha256.Sum256(game.OverlayImageBytes)
 	// [:] is required to convert a fixed length byte array to a byte slice.
 	hexHash := hex.EncodeToString(hash[:])
-	return filepath.Join(gridDir, "originals", game.ID + artStyleExtensions[0] + " " + hexHash+game.ImageExt)
+	return filepath.Join(gridDir, "originals", game.ID+artStyleExtensions[0]+" "+hexHash+game.ImageExt)
 }
 
-func RemoveExisting(gridDir string, gameId string, artStyleExtensions []string) error {
-	images, err := filepath.Glob(filepath.Join(gridDir, gameId + artStyleExtensions[0] + ".*"))
+func removeExisting(gridDir string, gameID string, artStyleExtensions []string) error {
+	images, err := filepath.Glob(filepath.Join(gridDir, gameID+artStyleExtensions[0]+".*"))
 	if err != nil {
 		return err
 	}
 	images = filterForImages(images)
 
-	backups, err := filepath.Glob(filepath.Join(gridDir, "originals", gameId + artStyleExtensions[0] + " *.*"))
+	backups, err := filepath.Glob(filepath.Join(gridDir, "originals", gameID+artStyleExtensions[0]+" *.*"))
 	if err != nil {
 		return err
 	}
@@ -63,7 +63,7 @@ func loadImage(game *Game, sourceName string, imagePath string) error {
 }
 
 // https://wenzr.wordpress.com/2018/04/09/go-glob-case-insensitive/
-func InsensitiveFilepath(path string) string {
+func insensitiveFilepath(path string) string {
 	if runtime.GOOS == "windows" {
 		return path
 	}
@@ -95,8 +95,8 @@ func filterForImages(paths []string) []string {
 	return matchedPaths
 }
 
-func LoadExisting(overridePath string, gridDir string, game *Game, artStyleExtensions []string) {
-	overridenIDs, _ := filepath.Glob(filepath.Join(overridePath, game.ID + artStyleExtensions[0] + ".*"))
+func loadExisting(overridePath string, gridDir string, game *Game, artStyleExtensions []string) {
+	overridenIDs, _ := filepath.Glob(filepath.Join(overridePath, game.ID+artStyleExtensions[0]+".*"))
 	if overridenIDs != nil && len(overridenIDs) > 0 {
 		loadImage(game, "local file in directory 'games'", overridenIDs[0])
 		return
@@ -106,7 +106,7 @@ func LoadExisting(overridePath string, gridDir string, game *Game, artStyleExten
 	if game.Name != "" {
 		re := regexp.MustCompile(`\W+`)
 		globName := re.ReplaceAllString(game.Name, "*")
-		overridenNames, _ := filepath.Glob(filepath.Join(overridePath, InsensitiveFilepath(globName) + artStyleExtensions[1] + ".*"))
+		overridenNames, _ := filepath.Glob(filepath.Join(overridePath, insensitiveFilepath(globName)+artStyleExtensions[1]+".*"))
 		if overridenNames != nil && len(overridenNames) > 0 {
 			loadImage(game, "local file in directory games/", overridenNames[0])
 			return
@@ -114,7 +114,7 @@ func LoadExisting(overridePath string, gridDir string, game *Game, artStyleExten
 	}
 
 	// If there are any old-style backups (without hash), load them over the existing (with overlay) images.
-	oldBackups, err := filepath.Glob(filepath.Join(gridDir, game.ID + artStyleExtensions[0] + " (original)*"))
+	oldBackups, err := filepath.Glob(filepath.Join(gridDir, game.ID+artStyleExtensions[0]+" (original)*"))
 	if err == nil && len(oldBackups) > 0 {
 		err = loadImage(game, "legacy backup (now converted)", oldBackups[0])
 		if err == nil {
@@ -123,7 +123,7 @@ func LoadExisting(overridePath string, gridDir string, game *Game, artStyleExten
 		}
 	}
 
-	files, err := filepath.Glob(filepath.Join(gridDir, game.ID + artStyleExtensions[0] + ".*"))
+	files, err := filepath.Glob(filepath.Join(gridDir, game.ID+artStyleExtensions[0]+".*"))
 	files = filterForImages(files)
 	if err == nil && len(files) > 0 {
 		err = loadImage(game, "manual customization", files[0])
