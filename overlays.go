@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"image"
+
 	// "image/draw"
 	"image/jpeg"
 	"image/png"
@@ -11,8 +12,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"golang.org/x/image/draw"
 	"github.com/kettek/apng"
+	"golang.org/x/image/draw"
 )
 
 // LoadOverlays from the given dir, returning a map of name -> image.
@@ -99,7 +100,7 @@ func ApplyOverlay(game *Game, overlays map[string]image.Image, artStyleExtension
 		tagName = strings.Replace(tagName, ">", "-", -1)
 		tagName = strings.Replace(tagName, "/", "-", -1)
 
-		overlayImage, ok := overlays[tagName + artStyleExtensions[1]]
+		overlayImage, ok := overlays[tagName+artStyleExtensions[1]]
 		if !ok {
 			continue
 		}
@@ -113,7 +114,7 @@ func ApplyOverlay(game *Game, overlays map[string]image.Image, artStyleExtension
 				// Scale overlay to imageSize so the images won't get that huge…
 				overlayScaled := image.NewRGBA(image.Rect(0, 0, originalSize.X, originalSize.Y))
 				result := image.NewRGBA(image.Rect(0, 0, originalSize.X, originalSize.Y))
-				if (originalSize.X != overlaySize.X && originalSize.Y != overlaySize.Y) {
+				if originalSize.X != overlaySize.X && originalSize.Y != overlaySize.Y {
 					// https://godoc.org/golang.org/x/image/draw#Kernel.Scale
 					draw.ApproxBiLinear.Scale(overlayScaled, overlayScaled.Bounds(), overlayImage, overlayImage.Bounds(), draw.Over, nil)
 				} else {
@@ -133,7 +134,7 @@ func ApplyOverlay(game *Game, overlays map[string]image.Image, artStyleExtension
 
 			// We expect overlays in the correct format so we have to scale the image if it doesn't fit
 			result := image.NewRGBA(image.Rect(0, 0, overlaySize.X, overlaySize.Y))
-			if (originalSize.X != overlaySize.X && originalSize.Y != overlaySize.Y) {
+			if originalSize.X != overlaySize.X && originalSize.Y != overlaySize.Y {
 				// scale to fit overlay
 				// https://godoc.org/golang.org/x/image/draw#Kernel.Scale
 				draw.ApproxBiLinear.Scale(result, result.Bounds(), gameImage, gameImage.Bounds(), draw.Over, nil)
