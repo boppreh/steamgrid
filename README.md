@@ -32,6 +32,8 @@ again when you get more games or want to update the category overlays.
 5. Run `steamgrid` and wait. No, really, it's all automatic. Not a single keypress required.
     * *(optional)* Append `--steamgriddb <api key>` if you've generated one before.
     * *(optional)* Append `--igdb <api key>` if you've genereated one before.
+    * *(optional)* Append `--types <preference>` to choose your preferences between animated steam covers or static ones Available choices : `animated`,`static`. Default : `static`. You can input both of them in order to fallback to the second option if it doesn´t found any results for the first one by separating entries with a comma. (Example : `animated,static` will result in animated covers being downloaded. If they´re none, it will search results for static one instead.
+    * *(optional)* Append `--styles <preference>` to choose your preferences between the different covers styles from steamgriddb. Available choices : `material`,`white_logo`,`alternate`,`blurred`,`no_logo`. Default: `alternate`. You can also input multiple choices in the same manners of the `--types` argument.
 6. Read the report and open Steam in grid view to check the results.
 
 ---
