@@ -35,6 +35,8 @@ again when you get more games or want to update the category overlays.
     * *(optional)* Append `--types <preference>` to choose your preferences between animated steam covers or static ones Available choices : `animated`,`static`. Default : `static`. You can use `animated,static` to download both while preferring animated covers, and `static,animated` for preferring static covers.
     * *(optional)* Append `--styles <preference>` to choose your preferences between the different covers styles from steamgriddb. Available choices : `material`,`white_logo`,`alternate`,`blurred`,`no_logo`. Default: `alternate`. You can also input multiple comma-separated choices in the same manners of the `--types` argument.
     * *(optional)* Append `--appids <appid1,appid2>` to only process the specified appID(s)
+    * *(optional)* Append `--onlymissingartwork` to only download artworks missing on the official servers.
+    * *(tip)* Run with `--help` to see all available options.
 6. Read the report and open Steam in grid view to check the results.
 
 ---

@@ -313,16 +313,24 @@ const steamCdnURLFormat = `cdn.akamai.steamstatic.com/steam/apps/%v/`
 // sources. Returns the final response received and a flag indicating if it was
 // from a Google search (useful because we want to log the lower quality
 // images).
-func getImageAlternatives(game *Game, artStyle string, artStyleExtensions []string, skipSteam bool, steamGridDBApiKey string, steamGridFilter string, IGDBApiKey string, skipGoogle bool) (response *http.Response, from string, err error) {
+func getImageAlternatives(game *Game, artStyle string, artStyleExtensions []string, skipSteam bool, steamGridDBApiKey string, steamGridFilter string, IGDBApiKey string, skipGoogle bool, onlyMissingArtwork bool) (response *http.Response, from string, err error) {
 	from = "steam server"
 	if !skipSteam {
 		response, err = tryDownload(fmt.Sprintf(akamaiURLFormat+artStyleExtensions[2], game.ID))
 		if err == nil && response != nil {
+			if onlyMissingArtwork {
+				// Abort if image is available
+				return nil, "", nil
+			}
 			return
 		}
 
 		response, err = tryDownload(fmt.Sprintf(steamCdnURLFormat+artStyleExtensions[2], game.ID))
 		if err == nil && response != nil {
+			if onlyMissingArtwork {
+				// Abort if image is available
+				return nil, "", nil
+			}
 			return
 		}
 	}
@@ -365,8 +373,8 @@ func getImageAlternatives(game *Game, artStyle string, artStyleExtensions []stri
 // DownloadImage tries to download the game images, saving it in game.ImageBytes. Returns
 // flags indicating if the operation succeeded and if the image downloaded was
 // from a search.
-func DownloadImage(gridDir string, game *Game, artStyle string, artStyleExtensions []string, skipSteam bool, steamGridDBApiKey string, steamGridFilter string, IGDBApiKey string, skipGoogle bool) (string, error) {
-	response, from, err := getImageAlternatives(game, artStyle, artStyleExtensions, skipSteam, steamGridDBApiKey, steamGridFilter, IGDBApiKey, skipGoogle)
+func DownloadImage(gridDir string, game *Game, artStyle string, artStyleExtensions []string, skipSteam bool, steamGridDBApiKey string, steamGridFilter string, IGDBApiKey string, skipGoogle bool, onlyMissingArtwork bool) (string, error) {
+	response, from, err := getImageAlternatives(game, artStyle, artStyleExtensions, skipSteam, steamGridDBApiKey, steamGridFilter, IGDBApiKey, skipGoogle, onlyMissingArtwork)
 	if response == nil || err != nil {
 		return "", err
 	}
