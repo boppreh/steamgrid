@@ -83,7 +83,11 @@ func startApplication() {
 		delete(artStyles, "Logo")
 	}
 	if len(artStyles) == 0 {
-		errorAndExit(errors.New("No artStyes, nothing to do…"))
+		errorAndExit(errors.New("No artStyles, nothing to do…"))
+	}
+
+	if *skipSteam && *onlyMissingArtwork {
+		errorAndExit(errors.New("Can't check if official artwork is missing with steam turned off"))
 	}
 
 	fmt.Println("Loading overlays...")
