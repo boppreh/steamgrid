@@ -13,6 +13,8 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/deanishe/awgo/fuzzy"
 )
 
 // When all else fails, Google it. Uses the regular web interface. There are
@@ -92,6 +94,20 @@ type steamGridDBSearchResponse struct {
 		Verified bool
 	}
 }
+
+// Enable fuzzy sorting
+// Default sort.Interface methods
+func (results steamGridDBSearchResponse) Len() int { return len(results.Data) }
+func (results steamGridDBSearchResponse) Swap(i, j int) {
+	results.Data[i], results.Data[j] = results.Data[j], results.Data[i]
+}
+func (results steamGridDBSearchResponse) Less(i, j int) bool {
+	return results.Data[i].Name < results.Data[j].Name
+}
+
+// Keywords implements Sortable.
+// Comparisons are based on the the full name of the contact.
+func (results steamGridDBSearchResponse) Keywords(i int) string { return results.Data[i].Name }
 
 // Search SteamGridDB for cover image
 const steamGridDBBaseURL = "https://www.steamgriddb.com/api/v2"
@@ -179,18 +195,8 @@ func getSteamGridDBImage(game *Game, artStyleExtensions []string, steamGridDBApi
 
 			SteamGridDBGameID := -1
 			if jsonSearchResponse.Success && len(jsonSearchResponse.Data) >= 1 {
-				// try to get exact match
-				for i := 0; i < len(jsonSearchResponse.Data); i++ {
-					if jsonSearchResponse.Data[i].Name == game.Name {
-						SteamGridDBGameID = jsonSearchResponse.Data[i].ID
-						break
-					}
-				}
-
-				// else guess first result
-				if SteamGridDBGameID == -1 {
-					SteamGridDBGameID = jsonSearchResponse.Data[0].ID
-				}
+				fuzzy.Sort(jsonSearchResponse, game.Name)
+				SteamGridDBGameID = jsonSearchResponse.Data[0].ID
 			}
 
 			if SteamGridDBGameID == -1 {
