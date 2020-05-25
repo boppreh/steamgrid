@@ -48,9 +48,9 @@ func startApplication() {
 	IGDBApiKey := flag.String("igdb", "", "Your personal IGDB api key, get one here: https://api.igdb.com/signup")
 	steamDir := flag.String("steamdir", "", "Path to your steam installation")
 	// "alternate" "blurred" "white_logo" "material" "no_logo"
-	steamGridStyles := flag.String("styles", "alternate", "Comma seperated list of styles to download from SteamGridDB.\nExample: \"white_logo,material\"")
+	steamGridStyles := flag.String("styles", "alternate", "Comma separated list of styles to download from SteamGridDB.\nExample: \"white_logo,material\"")
 	// "static" "animated"
-	steamGridTypes := flag.String("types", "static", "Comma seperated list of types to download from SteamGridDB.\nExample: \"static,animated\"")
+	steamGridTypes := flag.String("types", "static", "Comma separated list of types to download from SteamGridDB.\nExample: \"static,animated\"")
 	skipSteam := flag.Bool("skipsteam", false, "Skip downloads from Steam servers")
 	skipGoogle := flag.Bool("skipgoogle", false, "Skip search and downloads from google")
 	skipBanner := flag.Bool("skipbanner", false, "Skip search and processing banner artwork")
@@ -58,6 +58,7 @@ func startApplication() {
 	skipHero := flag.Bool("skiphero", false, "Skip search and processing hero artwork")
 	skipLogo := flag.Bool("skiplogo", false, "Skip search and processing logo artwork")
 	nonSteamOnly := flag.Bool("nonsteamonly", false, "Only search artwork for Non-Steam-Games")
+	appIDs := flag.String("appids", "", "Comma separated list of appIds that should be processed")
 	flag.Parse()
 	if flag.NArg() == 1 {
 		steamDir = &flag.Args()[0]
@@ -153,7 +154,7 @@ func startApplication() {
 			errorAndExit(err)
 		}
 
-		games := GetGames(user, *nonSteamOnly)
+		games := GetGames(user, *nonSteamOnly, *appIDs)
 
 		fmt.Println("Loading existing images and backups...")
 

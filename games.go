@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strconv"
+	"strings"
 )
 
 // Game in a steam library. May or may not be installed.
@@ -131,8 +132,15 @@ func addNonSteamGames(user User, games map[string]*Game) {
 
 // GetGames returns all games from a given user, using both the public profile and local
 // files to gather the data. Returns a map of game by ID.
-func GetGames(user User, nonSteamOnly bool) map[string]*Game {
+func GetGames(user User, nonSteamOnly bool, appIDs string) map[string]*Game {
 	games := make(map[string]*Game, 0)
+
+	if appIDs != "" {
+		for _, appID := range strings.Split(appIDs, ",") {
+			games[appID] = &Game{appID, "", []string{}, "", nil, nil, "", false}
+		}
+		return games
+	}
 
 	if !nonSteamOnly {
 		addGamesFromProfile(user, games)
