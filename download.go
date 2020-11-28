@@ -14,7 +14,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/deanishe/awgo/fuzzy"
+	"go.deanishe.net/fuzzy"
 )
 
 // When all else fails, Google it. Uses the regular web interface. There are
