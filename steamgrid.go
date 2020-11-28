@@ -51,6 +51,8 @@ func startApplication() {
 	steamGridStyles := flag.String("styles", "alternate", "Comma separated list of styles to download from SteamGridDB.\nExample: \"white_logo,material\"")
 	// "static" "animated"
 	steamGridTypes := flag.String("types", "static", "Comma separated list of types to download from SteamGridDB.\nExample: \"static,animated\"")
+	steamGridNsfw := flag.String("nsfw", "false", "Set to false to filter out nsfw, true to only include nsfw, any to include both.")
+	steamGridHumor := flag.String("humor", "false", "Set to false to filter out humor, true to only include humor, any to include both.")
 	skipSteam := flag.Bool("skipsteam", false, "Skip downloads from Steam servers")
 	skipGoogle := flag.Bool("skipgoogle", false, "Skip search and downloads from google")
 	skipBanner := flag.Bool("skipbanner", false, "Skip search and processing banner artwork")
@@ -69,7 +71,7 @@ func startApplication() {
 	}
 
 	// Process command line flags
-	steamGridFilter := "?styles=" + *steamGridStyles + "&types=" + *steamGridTypes
+	steamGridFilter := "?styles=" + *steamGridStyles + "&types=" + *steamGridTypes + "&nsfw=" + *steamGridNsfw + "&humor=" + *steamGridHumor
 	if *skipBanner {
 		delete(artStyles, "Banner")
 	}
