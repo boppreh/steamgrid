@@ -217,3 +217,7 @@ pip-log.txt
 
 #Mr Developer
 .mr.developer.cfg
+
+Steam
+steamgrid*
+__debug_bin
