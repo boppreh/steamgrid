@@ -263,7 +263,12 @@ func startApplication() {
 
 				// Copy with legacy naming for Big Picture mode
 				if artStyle == "Banner" {
+					// use appID
 					id, err := strconv.ParseUint(game.ID, 10, 64)
+					if game.LegacyID != 0 {
+						// old target+exe format for custom shortcuts
+						id = game.LegacyID
+					}
 					if err == nil {
 						imagePath := filepath.Join(gridDir, strconv.FormatUint(id<<32|0x02000000, 10)+artStyleExtensions[0]+game.ImageExt)
 						err = ioutil.WriteFile(imagePath, game.OverlayImageBytes, 0666)
