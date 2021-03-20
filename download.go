@@ -146,19 +146,23 @@ func getSteamGridDBImage(game *Game, artStyleExtensions []string, steamGridDBApi
 	// Try for HQ, then for LQ
 	// It's possible to request both dimensions in one go but that'll give us scrambled results with no indicator which result has which size.
 	for i := 0; i < 3; i += 2 {
-		filter := steamGridFilter + "&dimensions=" + artStyleExtensions[3+i] + "x" + artStyleExtensions[4+i]
 
+		filter := ""
 		// Try with game.ID which is probably steams appID
 		var baseURL string
 		switch artStyleExtensions[1] {
 		case ".banner":
 			baseURL = steamGridDBBaseURL + "/grids"
+			filter = steamGridFilter + "&dimensions=" + artStyleExtensions[3+i] + "x" + artStyleExtensions[4+i]
 		case ".cover":
 			baseURL = steamGridDBBaseURL + "/grids"
+			filter = steamGridFilter + "&dimensions=" + artStyleExtensions[3+i] + "x" + artStyleExtensions[4+i]
 		case ".hero":
 			baseURL = steamGridDBBaseURL + "/heroes"
+			filter = steamGridFilter + "&dimensions=" + artStyleExtensions[3+i] + "x" + artStyleExtensions[4+i]
 		case ".logo":
 			baseURL = steamGridDBBaseURL + "/logos"
+			filter = steamGridFilter
 		}
 		url := baseURL + "/steam/" + game.ID + filter
 
