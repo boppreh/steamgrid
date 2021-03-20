@@ -28,31 +28,19 @@ func main() {
 }
 
 func startApplication() {
-	artStyles := map[string][]string{
-		// BannerLQ: 460 x 215
-		// BannerHQ: 920 x 430
-		// CoverLQ: 300 x 450
-		// CoverHQ: 600 x 900
-		// HeroLQ: 1920 x 620
-		// HeroHQ: 3840 x 1240
-		// LogoLQ: 640 x 360
-		// LogoHQ: 1280 x 720
-		// artStyle: ["idExtension", "nameExtension", steamExtension, dimXHQ, dimYHQ, dimXLQ, dimYLQ]
-		"Banner": []string{"", ".banner", "header.jpg", "920", "430", "460", "215"},
-		"Cover":  []string{"p", ".cover", "library_600x900_2x.jpg", "600", "900", "300", "450"},
-		"Hero":   []string{"_hero", ".hero", "library_hero.jpg", "3840", "1240", "1920", "620"},
-		"Logo":   []string{"_logo", ".logo", "logo.png", "1280", "720", "640", "360"},
-	}
-
 	steamGridDBApiKey := flag.String("steamgriddb", "", "Your personal SteamGridDB api key, get one here: https://www.steamgriddb.com/profile/preferences")
 	IGDBApiKey := flag.String("igdb", "", "Your personal IGDB api key, get one here: https://api.igdb.com/signup")
 	steamDir := flag.String("steamdir", "", "Path to your steam installation")
 	// "alternate" "blurred" "white_logo" "material" "no_logo"
-	steamGridStyles := flag.String("styles", "alternate", "Comma separated list of styles to download from SteamGridDB.\nExample: \"white_logo,material\"")
+	steamGridDBStyles := flag.String("styles", "alternate", "Comma separated list of styles to download from SteamGridDB.\nExample: \"white_logo,material\"")
+	steamGridDBLogoStyles := flag.String("logostyles", "official", "Comma separated list of styles to download from SteamGridDB.\nExample: \"white,black\"")
 	// "static" "animated"
-	steamGridTypes := flag.String("types", "static", "Comma separated list of types to download from SteamGridDB.\nExample: \"static,animated\"")
-	steamGridNsfw := flag.String("nsfw", "false", "Set to false to filter out nsfw, true to only include nsfw, any to include both.")
-	steamGridHumor := flag.String("humor", "false", "Set to false to filter out humor, true to only include humor, any to include both.")
+	steamGridDBTypes := flag.String("types", "static", "Comma separated list of types to download from SteamGridDB.\nExample: \"static,animated\"")
+	steamGridDBNsfw := flag.String("nsfw", "false", "Set to false to filter out nsfw, true to only include nsfw, any to include both.")
+	steamGridDBHumor := flag.String("humor", "false", "Set to false to filter out humor, true to only include humor, any to include both.")
+	steamGridDBBannerDimensions := flag.String("bannerdimension", "460x215,920x430", "Filter results by image dimensions. Multiple dimensions can be provided as comma seperated strings.")
+	steamGridDBCoverDimensions := flag.String("verticaldimension", "600x900,342x482,660x930", "Filter results by image dimensions. Multiple dimensions can be provided as comma seperated strings.")
+	steamGridDBHeroDimensions := flag.String("herodimension", "1920x620,3840x1240,1600x650", "Filter results by image dimensions. Multiple dimensions can be provided as comma seperated strings.")
 	skipSteam := flag.Bool("skipsteam", false, "Skip downloads from Steam servers")
 	skipGoogle := flag.Bool("skipgoogle", false, "Skip search and downloads from google")
 	skipBanner := flag.Bool("skipbanner", false, "Skip search and processing banner artwork")
@@ -71,7 +59,19 @@ func startApplication() {
 	}
 
 	// Process command line flags
-	steamGridFilter := "?styles=" + *steamGridStyles + "&types=" + *steamGridTypes + "&nsfw=" + *steamGridNsfw + "&humor=" + *steamGridHumor
+	steamGridDBBannerFilter := "?styles=" + *steamGridDBStyles + "&types=" + *steamGridDBTypes + "&nsfw=" + *steamGridDBNsfw + "&humor=" + *steamGridDBHumor + "&dimensions=" + *steamGridDBBannerDimensions
+	steamGridDBCoverFilter := "?styles=" + *steamGridDBStyles + "&types=" + *steamGridDBTypes + "&nsfw=" + *steamGridDBNsfw + "&humor=" + *steamGridDBHumor + "&dimensions=" + *steamGridDBCoverDimensions
+	steamGridDBHeroFilter := "?styles=" + *steamGridDBStyles + "&types=" + *steamGridDBTypes + "&nsfw=" + *steamGridDBNsfw + "&humor=" + *steamGridDBHumor + "&dimensions=" + *steamGridDBHeroDimensions
+	steamGridDBLogoFilter := "?styles=" + *steamGridDBLogoStyles + "&types=" + *steamGridDBTypes + "&nsfw=" + *steamGridDBNsfw + "&humor=" + *steamGridDBHumor
+
+	artStyles := map[string][]string{
+		// artStyle: ["idExtension", "nameExtension", steamUrlExtension, steamGridDbFilter]
+		"Banner": []string{"", ".banner", "header.jpg", steamGridDBBannerFilter},
+		"Cover":  []string{"p", ".cover", "library_600x900_2x.jpg", steamGridDBCoverFilter},
+		"Hero":   []string{"_hero", ".hero", "library_hero.jpg", steamGridDBHeroFilter},
+		"Logo":   []string{"_logo", ".logo", "logo.png", steamGridDBLogoFilter},
+	}
+
 	if *skipBanner {
 		delete(artStyles, "Banner")
 	}
@@ -200,7 +200,7 @@ func startApplication() {
 				// Download if missing.
 				///////////////////////
 				if game.ImageSource == "" {
-					from, err := DownloadImage(gridDir, game, artStyle, artStyleExtensions, *skipSteam, *steamGridDBApiKey, steamGridFilter, *IGDBApiKey, *skipGoogle, *onlyMissingArtwork)
+					from, err := DownloadImage(gridDir, game, artStyle, artStyleExtensions, *skipSteam, *steamGridDBApiKey, *IGDBApiKey, *skipGoogle, *onlyMissingArtwork)
 					if err != nil && err.Error() == "SteamGridDB authorization token is missing or invalid" {
 						// Wrong api key
 						*steamGridDBApiKey = ""
