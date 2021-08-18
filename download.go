@@ -227,8 +227,8 @@ func getSteamGridDBImage(game *Game, artStyleExtensions []string, steamGridDBApi
 }
 
 const igdbImageURL = "https://images.igdb.com/igdb/image/upload/t_720p/%v.jpg"
-const igdbGameURL = "https://api-v3.igdb.com/games"
-const igdbCoverURL = "https://api-v3.igdb.com/covers"
+const igdbGameURL = "https://api.igdb.com/v4/games"
+const igdbCoverURL = "https://api.igdb.com/v4/covers"
 const igdbGameBody = `fields name,cover; search "%v";`
 const igdbCoverBody = `fields image_id; where id = %v;`
 
@@ -243,10 +243,37 @@ type igdbCover struct {
 	Image_ID string
 }
 
-func igdbPostRequest(url string, body string, IGDBApiKey string) ([]byte, error) {
+func igdbPostRequest(url string, body string, IGDBSecret string, IGDBClient string) ([]byte, error) {
+
+	tokenClient := &http.Client{}
+	reqq, err := http.NewRequest("POST", "https://id.twitch.tv/oauth2/token?client_id="+IGDBClient+"&client_secret="+IGDBSecret+"&grant_type=client_credentials", strings.NewReader(body))
+	tokenResponse, err := tokenClient.Do(reqq)
+	if err != nil {
+		return nil, err
+	}
+
+	tokenBody, err := ioutil.ReadAll(tokenResponse.Body)
+
+	if err != nil {
+		return nil, err
+	}
+
+	type token struct {
+		String string "json:\"access_token\""
+	}
+
+	token1 := token{}
+
+	jsonErr := json.Unmarshal(tokenBody, &token1)
+
+	if jsonErr != nil {
+		return nil, jsonErr
+	}
+
 	client := &http.Client{}
 	req, err := http.NewRequest("POST", url, strings.NewReader(body))
-	req.Header.Add("user-key", IGDBApiKey)
+	req.Header.Add("Client-ID", IGDBClient)
+	req.Header.Add("Authorization", "Bearer "+token1.String)
 	req.Header.Add("Accept", "application/json")
 	if err != nil {
 		return nil, err
@@ -266,8 +293,8 @@ func igdbPostRequest(url string, body string, IGDBApiKey string) ([]byte, error)
 	return responseBytes, nil
 }
 
-func getIGDBImage(gameName string, IGDBApiKey string) (string, error) {
-	responseBytes, err := igdbPostRequest(igdbGameURL, fmt.Sprintf(igdbGameBody, gameName), IGDBApiKey)
+func getIGDBImage(gameName string, IGDBSecret string, IGDBClient string) (string, error) {
+	responseBytes, err := igdbPostRequest(igdbGameURL, fmt.Sprintf(igdbGameBody, gameName), IGDBSecret, IGDBClient)
 	if err != nil {
 		return "", err
 	}
@@ -282,7 +309,7 @@ func getIGDBImage(gameName string, IGDBApiKey string) (string, error) {
 		return "", nil
 	}
 
-	responseBytes, err = igdbPostRequest(igdbCoverURL, fmt.Sprintf(igdbCoverBody, jsonGameResponse[0].Cover), IGDBApiKey)
+	responseBytes, err = igdbPostRequest(igdbCoverURL, fmt.Sprintf(igdbCoverBody, jsonGameResponse[0].Cover), IGDBSecret, IGDBClient)
 	if err != nil {
 		return "", err
 	}
@@ -329,7 +356,7 @@ const steamCdnURLFormat = `cdn.akamai.steamstatic.com/steam/apps/%v/`
 // sources. Returns the final response received and a flag indicating if it was
 // from a Google search (useful because we want to log the lower quality
 // images).
-func getImageAlternatives(game *Game, artStyle string, artStyleExtensions []string, skipSteam bool, steamGridDBApiKey string, IGDBApiKey string, skipGoogle bool, onlyMissingArtwork bool) (response *http.Response, from string, err error) {
+func getImageAlternatives(game *Game, artStyle string, artStyleExtensions []string, skipSteam bool, steamGridDBApiKey string, IGDBSecret string, IGDBClient string, skipGoogle bool, onlyMissingArtwork bool) (response *http.Response, from string, err error) {
 	from = "steam server"
 	if !skipSteam {
 		response, err = tryDownload(fmt.Sprintf(akamaiURLFormat+artStyleExtensions[2], game.ID))
@@ -361,9 +388,9 @@ func getImageAlternatives(game *Game, artStyle string, artStyleExtensions []stri
 	}
 
 	// IGDB has mostly cover styles
-	if artStyle == "Cover" && IGDBApiKey != "" && url == "" {
+	if artStyle == "Cover" && IGDBClient != "" && IGDBSecret != "" && url == "" {
 		from = "IGDB"
-		url, err = getIGDBImage(game.Name, IGDBApiKey)
+		url, err = getIGDBImage(game.Name, IGDBSecret, IGDBClient)
 		if err != nil {
 			return
 		}
@@ -389,8 +416,8 @@ func getImageAlternatives(game *Game, artStyle string, artStyleExtensions []stri
 // DownloadImage tries to download the game images, saving it in game.ImageBytes. Returns
 // flags indicating if the operation succeeded and if the image downloaded was
 // from a search.
-func DownloadImage(gridDir string, game *Game, artStyle string, artStyleExtensions []string, skipSteam bool, steamGridDBApiKey string, IGDBApiKey string, skipGoogle bool, onlyMissingArtwork bool) (string, error) {
-	response, from, err := getImageAlternatives(game, artStyle, artStyleExtensions, skipSteam, steamGridDBApiKey, IGDBApiKey, skipGoogle, onlyMissingArtwork)
+func DownloadImage(gridDir string, game *Game, artStyle string, artStyleExtensions []string, skipSteam bool, steamGridDBApiKey string, IGDBSecret string, IGDBClient string, skipGoogle bool, onlyMissingArtwork bool) (string, error) {
+	response, from, err := getImageAlternatives(game, artStyle, artStyleExtensions, skipSteam, steamGridDBApiKey, IGDBSecret, IGDBClient, skipGoogle, onlyMissingArtwork)
 	if response == nil || err != nil {
 		return "", err
 	}
