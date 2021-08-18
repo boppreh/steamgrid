@@ -29,7 +29,8 @@ func main() {
 
 func startApplication() {
 	steamGridDBApiKey := flag.String("steamgriddb", "", "Your personal SteamGridDB api key, get one here: https://www.steamgriddb.com/profile/preferences")
-	IGDBApiKey := flag.String("igdb", "", "Your personal IGDB api key, get one here: https://api.igdb.com/signup")
+	IGDBSecret := flag.String("igdbsecret", "", "Your personal IGDB api key, get one here: https://api.igdb.com/signup")
+	IGDBClient := flag.String("igdbclient", "", "Your personal IGDB api key, get one here: https://api.igdb.com/signup")
 	steamDir := flag.String("steamdir", "", "Path to your steam installation")
 	// "alternate" "blurred" "white_logo" "material" "no_logo"
 	steamGridDBStyles := flag.String("styles", "alternate", "Comma separated list of styles to download from SteamGridDB.\nExample: \"white_logo,material\"")
@@ -200,7 +201,7 @@ func startApplication() {
 				// Download if missing.
 				///////////////////////
 				if game.ImageSource == "" {
-					from, err := DownloadImage(gridDir, game, artStyle, artStyleExtensions, *skipSteam, *steamGridDBApiKey, *IGDBApiKey, *skipGoogle, *onlyMissingArtwork)
+					from, err := DownloadImage(gridDir, game, artStyle, artStyleExtensions, *skipSteam, *steamGridDBApiKey, *IGDBSecret, *IGDBClient, *skipGoogle, *onlyMissingArtwork)
 					if err != nil && err.Error() == "SteamGridDB authorization token is missing or invalid" {
 						// Wrong api key
 						*steamGridDBApiKey = ""
