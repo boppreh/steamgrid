@@ -28,10 +28,11 @@ again when you get more games or want to update the category overlays.
     * Add the extension `.logo`/`_hero` before the image extension for logo art `Psychonauts.logo.png`, `3830_logo.png`
 4. *(optional)* Generate a some API Keys to enhance the automatic search:
     * [SteamGridDB API Key](https://www.steamgriddb.com/profile/preferences)
-    * [IGDB API Key](https://api.igdb.com/signup)
+    * [IGDB API Client/Secret](https://api-docs.igdb.com/#about)
 5. Run `steamgrid` and wait. No, really, it's all automatic. Not a single key press required.
     * *(optional)* Append `--steamgriddb <api key>` if you've generated one before.
-    * *(optional)* Append `--igdb <api key>` if you've generated one before.
+    * *(optional)* Append `--igdbclient <igdb client>` if you've genereated one before.
+    * *(optional)* Append `--igdbsecret <igdb secret>` if you've genereated one before.
     * *(optional)* Append `--types <preference>` to choose your preferences between animated steam covers or static ones Available choices : `animated`,`static`. Default : `static`. You can use `animated,static` to download both while preferring animated covers, and `static,animated` for preferring static covers.
     * *(optional)* Append `--styles <preference>` to choose your preferences between the different covers styles from steamgriddb. Available choices : `material`,`white_logo`,`alternate`,`blurred`,`no_logo`. Default: `alternate`. You can also input multiple comma-separated choices in the same manners of the `--types` argument.
     * *(optional)* Append `--appids <appid1,appid2>` to only process the specified appID(s)
