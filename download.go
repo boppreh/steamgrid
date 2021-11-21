@@ -13,6 +13,8 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+
+	"go.deanishe.net/fuzzy"
 )
 
 // When all else fails, Google it. Uses the regular web interface. There are
@@ -30,7 +32,8 @@ func getGoogleImage(gameName string, artStyleExtensions []string) (string, error
 		return "", nil
 	}
 
-	url := fmt.Sprintf(googleSearchFormat, artStyleExtensions[5], artStyleExtensions[6]) + url.QueryEscape(gameName)
+	// Format is hardcoded to old banner format here, we're using google only for banners anyway.
+	url := fmt.Sprintf(googleSearchFormat, 460, 215) + url.QueryEscape(gameName)
 
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", url, nil)
@@ -66,43 +69,57 @@ func getGoogleImage(gameName string, artStyleExtensions []string) (string, error
 }
 
 // https://www.steamgriddb.com/api/v2
-type SteamGridDBResponse struct {
+type steamGridDBResponse struct {
 	Success bool
-	Data []struct {
-		Id int
-		Score int
-		Style string
-		Url string
-		Thumb string
-		Tags []string
+	Data    []struct {
+		ID     int
+		Score  int
+		Style  string
+		URL    string
+		Thumb  string
+		Tags   []string
 		Author struct {
-			Name string
+			Name    string
 			Steam64 string
-			Avatar string
+			Avatar  string
 		}
 	}
 }
 
-type SteamGridDBSearchResponse struct {
+type steamGridDBSearchResponse struct {
 	Success bool
-	Data []struct {
-		Id int
-		Name string
-		Types []string
+	Data    []struct {
+		ID       int
+		Name     string
+		Types    []string
 		Verified bool
 	}
 }
 
-// Search SteamGridDB for cover image
-const SteamGridDBBaseURL = "https://www.steamgriddb.com/api/v2"
+// Enable fuzzy sorting
+// Default sort.Interface methods
+func (results steamGridDBSearchResponse) Len() int { return len(results.Data) }
+func (results steamGridDBSearchResponse) Swap(i, j int) {
+	results.Data[i], results.Data[j] = results.Data[j], results.Data[i]
+}
+func (results steamGridDBSearchResponse) Less(i, j int) bool {
+	return results.Data[i].Name < results.Data[j].Name
+}
 
-func SteamGridDBGetRequest(url string, steamGridDBApiKey string) ([]byte, error) {
+// Keywords implements Sortable.
+// Comparisons are based on the the full name of the contact.
+func (results steamGridDBSearchResponse) Keywords(i int) string { return results.Data[i].Name }
+
+// Search SteamGridDB for cover image
+const steamGridDBBaseURL = "https://www.steamgriddb.com/api/v2"
+
+func steamGridDBGetRequest(url string, steamGridDBApiKey string) ([]byte, error) {
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Add("Authorization", "Bearer " + steamGridDBApiKey)
+	req.Header.Add("Authorization", "Bearer "+steamGridDBApiKey)
 
 	response, err := client.Do(req)
 	if err != nil {
@@ -126,71 +143,69 @@ func SteamGridDBGetRequest(url string, steamGridDBApiKey string) ([]byte, error)
 	return responseBytes, nil
 }
 
-func getSteamGridDBImage(game *Game, artStyleExtensions []string, steamGridDBApiKey string, steamGridFilter string) (string, error) {
+func getSteamGridDBImage(game *Game, artStyleExtensions []string, steamGridDBApiKey string) (string, error) {
 	// Try for HQ, then for LQ
 	// It's possible to request both dimensions in one go but that'll give us scrambled results with no indicator which result has which size.
 	for i := 0; i < 3; i += 2 {
-		filter := steamGridFilter + "&dimensions=" + artStyleExtensions[3 + i] + "x" + artStyleExtensions[4 + i]
 
 		// Try with game.ID which is probably steams appID
-		var baseUrl string
+		var baseURL string
 		switch artStyleExtensions[1] {
 		case ".banner":
-			baseUrl = SteamGridDBBaseURL + "/grids"
+			baseURL = steamGridDBBaseURL + "/grids"
 		case ".cover":
-			baseUrl = SteamGridDBBaseURL + "/grids"
+			baseURL = steamGridDBBaseURL + "/grids"
 		case ".hero":
-			baseUrl = SteamGridDBBaseURL + "/heroes"
+			baseURL = steamGridDBBaseURL + "/heroes"
 		case ".logo":
-			baseUrl = SteamGridDBBaseURL + "/logos"
+			baseURL = steamGridDBBaseURL + "/logos"
 		}
-		url := baseUrl + "/steam/" + game.ID + filter
+		url := baseURL + "/steam/" + game.ID + artStyleExtensions[3]
 
-		var jsonResponse SteamGridDBResponse
+		var jsonResponse steamGridDBResponse
 		var responseBytes []byte
 		var err error
 
 		// Skip requests with appID for custom games
 		if !game.Custom {
-			responseBytes, err = SteamGridDBGetRequest(url, steamGridDBApiKey)
+			responseBytes, err = steamGridDBGetRequest(url, steamGridDBApiKey)
 		} else {
 			err = errors.New("404")
 		}
 
 		// Authorization token is missing or invalid
-	 	if err != nil && err.Error() == "401" {
+		if err != nil && err.Error() == "401" {
 			return "", errors.New("SteamGridDB authorization token is missing or invalid")
-		// Could not find game with that id
+			// Could not find game with that id
 		} else if err != nil && err.Error() == "404" {
 			// Try searching for the name…
-			url = SteamGridDBBaseURL + "/search/autocomplete/" + game.Name + filter
-			responseBytes, err = SteamGridDBGetRequest(url, steamGridDBApiKey)
+			url = steamGridDBBaseURL + "/search/autocomplete/" + game.Name + artStyleExtensions[3]
+			responseBytes, err = steamGridDBGetRequest(url, steamGridDBApiKey)
 			if err != nil && err.Error() == "401" {
 				return "", errors.New("SteamGridDB authorization token is missing or invalid")
 			} else if err != nil {
 				return "", err
 			}
 
-			var jsonSearchResponse SteamGridDBSearchResponse
+			var jsonSearchResponse steamGridDBSearchResponse
 			err = json.Unmarshal(responseBytes, &jsonSearchResponse)
 			if err != nil {
 				return "", errors.New("Best search match doesn't has a requested type or style")
 			}
 
-			SteamGridDBGameId := -1
+			SteamGridDBGameID := -1
 			if jsonSearchResponse.Success && len(jsonSearchResponse.Data) >= 1 {
-				// First match should be the best one
-				SteamGridDBGameId = jsonSearchResponse.Data[0].Id
+				fuzzy.Sort(jsonSearchResponse, game.Name)
+				SteamGridDBGameID = jsonSearchResponse.Data[0].ID
 			}
 
-			if SteamGridDBGameId == -1 {
+			if SteamGridDBGameID == -1 {
 				return "", nil
 			}
 
-
 			// …and get the url of the top result.
-			url = baseUrl + "/game/" + strconv.Itoa(SteamGridDBGameId) + filter
-			responseBytes, err = SteamGridDBGetRequest(url, steamGridDBApiKey)
+			url = baseURL + "/game/" + strconv.Itoa(SteamGridDBGameID) + artStyleExtensions[3]
+			responseBytes, err = steamGridDBGetRequest(url, steamGridDBApiKey)
 			if err != nil {
 				return "", err
 			}
@@ -204,34 +219,61 @@ func getSteamGridDBImage(game *Game, artStyleExtensions []string, steamGridDBApi
 		}
 
 		if jsonResponse.Success && len(jsonResponse.Data) >= 1 {
-			return jsonResponse.Data[0].Url, nil
+			return jsonResponse.Data[0].URL, nil
 		}
 	}
 
 	return "", nil
 }
 
-const IGDBImageURL = "https://images.igdb.com/igdb/image/upload/t_720p/%v.jpg"
-const IGDBGameURL = "https://api-v3.igdb.com/games"
-const IGDBCoverURL = "https://api-v3.igdb.com/covers"
-const IGDBGameBody = `fields name,cover; search "%v";`
-const IGDBCoverBody = `fields image_id; where id = %v;`
+const igdbImageURL = "https://images.igdb.com/igdb/image/upload/t_720p/%v.jpg"
+const igdbGameURL = "https://api.igdb.com/v4/games"
+const igdbCoverURL = "https://api.igdb.com/v4/covers"
+const igdbGameBody = `fields name,cover; search "%v";`
+const igdbCoverBody = `fields image_id; where id = %v;`
 
-type IGDBGame struct {
-	Id int
+type igdbGame struct {
+	ID    int
 	Cover int
-	Name string
+	Name  string
 }
 
-type IGDBCover struct {
-	Id int
-	Image_id string
+type igdbCover struct {
+	ID       int
+	Image_ID string
 }
 
-func IGDBPostRequest(url string, body string, IGDBApiKey string) ([]byte, error) {
+func igdbPostRequest(url string, body string, IGDBSecret string, IGDBClient string) ([]byte, error) {
+
+	tokenClient := &http.Client{}
+	reqq, err := http.NewRequest("POST", "https://id.twitch.tv/oauth2/token?client_id="+IGDBClient+"&client_secret="+IGDBSecret+"&grant_type=client_credentials", strings.NewReader(body))
+	tokenResponse, err := tokenClient.Do(reqq)
+	if err != nil {
+		return nil, err
+	}
+
+	tokenBody, err := ioutil.ReadAll(tokenResponse.Body)
+
+	if err != nil {
+		return nil, err
+	}
+
+	type token struct {
+		String string "json:\"access_token\""
+	}
+
+	token1 := token{}
+
+	jsonErr := json.Unmarshal(tokenBody, &token1)
+
+	if jsonErr != nil {
+		return nil, jsonErr
+	}
+
 	client := &http.Client{}
 	req, err := http.NewRequest("POST", url, strings.NewReader(body))
-	req.Header.Add("user-key", IGDBApiKey)
+	req.Header.Add("Client-ID", IGDBClient)
+	req.Header.Add("Authorization", "Bearer "+token1.String)
 	req.Header.Add("Accept", "application/json")
 	if err != nil {
 		return nil, err
@@ -251,13 +293,13 @@ func IGDBPostRequest(url string, body string, IGDBApiKey string) ([]byte, error)
 	return responseBytes, nil
 }
 
-func getIGDBImage(gameName string, IGDBApiKey string) (string, error) {
-	responseBytes, err := IGDBPostRequest(IGDBGameURL, fmt.Sprintf(IGDBGameBody, gameName), IGDBApiKey)
+func getIGDBImage(gameName string, IGDBSecret string, IGDBClient string) (string, error) {
+	responseBytes, err := igdbPostRequest(igdbGameURL, fmt.Sprintf(igdbGameBody, gameName), IGDBSecret, IGDBClient)
 	if err != nil {
 		return "", err
 	}
 
-	var jsonGameResponse []IGDBGame
+	var jsonGameResponse []igdbGame
 	err = json.Unmarshal(responseBytes, &jsonGameResponse)
 	if err != nil {
 		return "", nil
@@ -267,19 +309,19 @@ func getIGDBImage(gameName string, IGDBApiKey string) (string, error) {
 		return "", nil
 	}
 
-	responseBytes, err = IGDBPostRequest(IGDBCoverURL, fmt.Sprintf(IGDBCoverBody, jsonGameResponse[0].Cover), IGDBApiKey)
+	responseBytes, err = igdbPostRequest(igdbCoverURL, fmt.Sprintf(igdbCoverBody, jsonGameResponse[0].Cover), IGDBSecret, IGDBClient)
 	if err != nil {
 		return "", err
 	}
 
-	var jsonCoverResponse []IGDBCover
+	var jsonCoverResponse []igdbCover
 	err = json.Unmarshal(responseBytes, &jsonCoverResponse)
 	if err != nil {
 		return "", nil
 	}
 
 	if len(jsonCoverResponse) >= 1 {
-		return fmt.Sprintf(IGDBImageURL, jsonCoverResponse[0].Image_id), nil
+		return fmt.Sprintf(igdbImageURL, jsonCoverResponse[0].Image_ID), nil
 	}
 
 	return "", nil
@@ -314,16 +356,24 @@ const steamCdnURLFormat = `cdn.akamai.steamstatic.com/steam/apps/%v/`
 // sources. Returns the final response received and a flag indicating if it was
 // from a Google search (useful because we want to log the lower quality
 // images).
-func getImageAlternatives(game *Game, artStyle string, artStyleExtensions []string, skipSteam bool, steamGridDBApiKey string, steamGridFilter string, IGDBApiKey string, skipGoogle bool) (response *http.Response, from string, err error) {
+func getImageAlternatives(game *Game, artStyle string, artStyleExtensions []string, skipSteam bool, steamGridDBApiKey string, IGDBSecret string, IGDBClient string, skipGoogle bool, onlyMissingArtwork bool) (response *http.Response, from string, err error) {
 	from = "steam server"
 	if !skipSteam {
-		response, err = tryDownload(fmt.Sprintf(akamaiURLFormat + artStyleExtensions[2], game.ID))
+		response, err = tryDownload(fmt.Sprintf(akamaiURLFormat+artStyleExtensions[2], game.ID))
 		if err == nil && response != nil {
+			if onlyMissingArtwork {
+				// Abort if image is available
+				return nil, "", nil
+			}
 			return
 		}
 
-		response, err = tryDownload(fmt.Sprintf(steamCdnURLFormat + artStyleExtensions[2], game.ID))
+		response, err = tryDownload(fmt.Sprintf(steamCdnURLFormat+artStyleExtensions[2], game.ID))
 		if err == nil && response != nil {
+			if onlyMissingArtwork {
+				// Abort if image is available
+				return nil, "", nil
+			}
 			return
 		}
 	}
@@ -331,16 +381,16 @@ func getImageAlternatives(game *Game, artStyle string, artStyleExtensions []stri
 	url := ""
 	if steamGridDBApiKey != "" && url == "" {
 		from = "SteamGridDB"
-		url, err = getSteamGridDBImage(game, artStyleExtensions, steamGridDBApiKey, steamGridFilter)
+		url, err = getSteamGridDBImage(game, artStyleExtensions, steamGridDBApiKey)
 		if err != nil {
 			return
 		}
 	}
 
 	// IGDB has mostly cover styles
-	if artStyle == "Cover" && IGDBApiKey != "" && url == "" {
+	if artStyle == "Cover" && IGDBClient != "" && IGDBSecret != "" && url == "" {
 		from = "IGDB"
-		url, err = getIGDBImage(game.Name, IGDBApiKey)
+		url, err = getIGDBImage(game.Name, IGDBSecret, IGDBClient)
 		if err != nil {
 			return
 		}
@@ -366,8 +416,8 @@ func getImageAlternatives(game *Game, artStyle string, artStyleExtensions []stri
 // DownloadImage tries to download the game images, saving it in game.ImageBytes. Returns
 // flags indicating if the operation succeeded and if the image downloaded was
 // from a search.
-func DownloadImage(gridDir string, game *Game, artStyle string, artStyleExtensions []string, skipSteam bool, steamGridDBApiKey string, steamGridFilter string, IGDBApiKey string, skipGoogle bool) (string, error) {
-	response, from, err := getImageAlternatives(game, artStyle, artStyleExtensions, skipSteam, steamGridDBApiKey, steamGridFilter, IGDBApiKey, skipGoogle)
+func DownloadImage(gridDir string, game *Game, artStyle string, artStyleExtensions []string, skipSteam bool, steamGridDBApiKey string, IGDBSecret string, IGDBClient string, skipGoogle bool, onlyMissingArtwork bool) (string, error) {
+	response, from, err := getImageAlternatives(game, artStyle, artStyleExtensions, skipSteam, steamGridDBApiKey, IGDBSecret, IGDBClient, skipGoogle, onlyMissingArtwork)
 	if response == nil || err != nil {
 		return "", err
 	}
@@ -400,13 +450,13 @@ func DownloadImage(gridDir string, game *Game, artStyle string, artStyleExtensio
 		return "", err
 	}
 	imageSize := image.Bounds().Max
-	if (artStyle == "Banner" && imageSize.X < imageSize.Y) {
+	if artStyle == "Banner" && imageSize.X < imageSize.Y {
 		return "", nil
-	} else if (artStyle == "Cover" && imageSize.X > imageSize.Y) {
+	} else if artStyle == "Cover" && imageSize.X > imageSize.Y {
 		return "", nil
 	}
 
-	game.ImageSource = from;
+	game.ImageSource = from
 
 	game.CleanImageBytes = imageBytes
 	return from, nil
@@ -415,8 +465,8 @@ func DownloadImage(gridDir string, game *Game, artStyle string, artStyleExtensio
 // Get game name from SteamDB as last resort.
 const steamDBFormat = `https://steamdb.info/app/%v`
 
-func GetGameName(gameId string) string {
-	response, err := tryDownload(fmt.Sprintf(steamDBFormat, gameId))
+func getGameName(gameID string) string {
+	response, err := tryDownload(fmt.Sprintf(steamDBFormat, gameID))
 	if err != nil || response == nil {
 		return ""
 	}
@@ -430,7 +480,7 @@ func GetGameName(gameId string) string {
 	match := pattern.FindStringSubmatch(string(page))
 	if match == nil || len(match) == 0 {
 		return ""
-	} else {
-		return match[1]
 	}
+
+	return match[1]
 }

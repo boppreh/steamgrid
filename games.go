@@ -2,12 +2,13 @@ package main
 
 import (
 	"bytes"
+	"encoding/binary"
+	"fmt"
 	"hash/crc32"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
-	"strconv"
 	"strings"
 )
 
@@ -29,6 +30,8 @@ type Game struct {
 	ImageSource string
 	// Is custom shortcut?
 	Custom bool
+	// LegacyID used in BigPicture
+	LegacyID uint64
 }
 
 // Pattern of game declarations in the public profile. It's actually JSON
@@ -50,7 +53,7 @@ func addGamesFromProfile(user User, games map[string]*Game) (err error) {
 		gameID := groups[1]
 		gameName := groups[2]
 		tags := []string{""}
-		games[gameID] = &Game{gameID, gameName, tags, "", nil, nil, "", false}
+		games[gameID] = &Game{gameID, gameName, tags, "", nil, nil, "", false, 0}
 	}
 
 	return
@@ -88,7 +91,7 @@ func addUnknownGames(user User, games map[string]*Game) {
 				// If for some reason it wasn't included in the profile, create a new
 				// entry for it now. Unfortunately we don't have a name.
 				gameName := ""
-				games[gameID] = &Game{gameID, gameName, []string{tag}, "", nil, nil, "", false}
+				games[gameID] = &Game{gameID, gameName, []string{tag}, "", nil, nil, "", false, 0}
 			}
 		}
 	}
@@ -111,18 +114,21 @@ func addNonSteamGames(user User, games map[string]*Game) {
 
 	// The actual binary format is known, but using regexes is way easier than
 	// parsing the entire file. If I run into any problems I'll replace this.
-	gamePattern := regexp.MustCompile("(?i)\x01appname\x00([^\x08]+?)\x00\x01exe\x00([^\x08]+?)\x00\x01.+?\x00tags\x00(?:\x01([^\x08]+?)|)\x08\x08")
+	gamePattern := regexp.MustCompile("(?i)\x00\x02appid\x00(.{4})\x01appname\x00([^\x08]+?)\x00\x01exe\x00([^\x08]+?)\x00\x01.+?\x00tags\x00(?:\x01([^\x08]+?)|)\x08\x08")
 	tagsPattern := regexp.MustCompile("\\d\x00([^\x00\x01\x08]+?)\x00")
 	for _, gameGroups := range gamePattern.FindAllSubmatch(shortcutBytes, -1) {
-		gameName := gameGroups[1]
-		target := gameGroups[2]
+		gameID := fmt.Sprint(binary.LittleEndian.Uint32(gameGroups[1]))
+		gameName := gameGroups[2]
+
+		// BigPicture is still using these
+		target := gameGroups[3]
 		uniqueName := bytes.Join([][]byte{target, gameName}, []byte(""))
-		// Does IEEE CRC32 of target concatenated with gameName. No idea why Steam chose this operation.
-		gameID := strconv.FormatUint(uint64(crc32.ChecksumIEEE(uniqueName)) | 0x80000000, 10)
-		game := Game{gameID, string(gameName), []string{}, "", nil, nil, "", true}
+		LegacyID := uint64(crc32.ChecksumIEEE(uniqueName)) | 0x80000000
+
+		game := Game{gameID, string(gameName), []string{}, "", nil, nil, "", true, LegacyID}
 		games[gameID] = &game
 
-		tagsText := gameGroups[3]
+		tagsText := gameGroups[4]
 		for _, tagGroups := range tagsPattern.FindAllSubmatch(tagsText, -1) {
 			tag := tagGroups[1]
 			game.Tags = append(game.Tags, string(tag))
@@ -137,7 +143,7 @@ func GetGames(user User, nonSteamOnly bool, appIDs string) map[string]*Game {
 
 	if appIDs != "" {
 		for _, appID := range strings.Split(appIDs, ",") {
-			games[appID] = &Game{appID, "", []string{}, "", nil, nil, "", false}
+			games[appID] = &Game{appID, "", []string{}, "", nil, nil, "", false, 0}
 		}
 		return games
 	}
