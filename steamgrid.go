@@ -11,7 +11,9 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -25,6 +27,24 @@ func errorAndExit(err error) {
 func main() {
 	http.DefaultTransport.(*http.Transport).ResponseHeaderTimeout = time.Second * 10
 	startApplication()
+}
+
+func bToMb(b uint64) uint64 {
+	return b / 1024 / 1024
+}
+
+func printMemStats(endline ...bool) {
+	var m runtime.MemStats
+	runtime.ReadMemStats(&m)
+	// For info on each, see: https://golang.org/pkg/runtime/#MemStats
+	fmt.Printf("Alloc = %v MiB", bToMb(m.Alloc))
+	fmt.Printf("\tTotalAlloc = %v MiB", bToMb(m.TotalAlloc))
+	//fmt.Printf("\tSys = %v MiB", bToMb(m.Sys))
+	//fmt.Printf("\tNumGC = %v", m.NumGC)
+
+	if len(endline) == 0 || endline[0] {
+		fmt.Printf("\n")
+	}
 }
 
 func startApplication() {
@@ -180,6 +200,7 @@ func startApplication() {
 			} else {
 				name = "unknown game with id " + game.ID
 			}
+
 			fmt.Printf("Processing %v (%v/%v)\n", name, i, len(games))
 
 			for artStyle, artStyleExtensions := range artStyles {
@@ -257,6 +278,10 @@ func startApplication() {
 				err = backupGame(gridDir, game, artStyleExtensions)
 				if err != nil {
 					errorAndExit(err)
+				}
+
+				if strings.Contains(game.ImageExt, "webp") {
+					game.ImageExt = ".png"
 				}
 
 				imagePath := filepath.Join(gridDir, game.ID+artStyleExtensions[0]+game.ImageExt)

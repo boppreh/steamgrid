@@ -14,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/kmicki/webpanimation"
 	"go.deanishe.net/fuzzy"
 )
 
@@ -445,11 +446,30 @@ func DownloadImage(gridDir string, game *Game, artStyle string, artStyleExtensio
 	response.Body.Close()
 
 	// catch false aspect ratios
-	image, _, err := image.Decode(bytes.NewBuffer(imageBytes))
+	var webpImage *webpanimation.WebpAnimationDecoded
+	defer func() {
+		if webpImage != nil {
+			webpanimation.ReleaseDecoder(webpImage)
+		}
+	}()
+	var dlImage image.Image
+	if strings.Contains(contentType, "webp") {
+		webpImage, err = webpanimation.GetInfo(bytes.NewBuffer(imageBytes))
+		if err == nil {
+			webpFrame, ok := webpanimation.GetNextFrame(webpImage)
+			if ok {
+				dlImage = webpFrame.Image
+			} else {
+				err = errors.New("can't read the first frame of WEBP animation")
+			}
+		}
+	} else {
+		dlImage, _, err = image.Decode(bytes.NewBuffer(imageBytes))
+	}
 	if err != nil {
 		return "", err
 	}
-	imageSize := image.Bounds().Max
+	imageSize := dlImage.Bounds().Max
 	if artStyle == "Banner" && imageSize.X < imageSize.Y {
 		return "", nil
 	} else if artStyle == "Cover" && imageSize.X > imageSize.Y {
