@@ -67,7 +67,7 @@ func GetUsers(installationDir string) ([]User, error) {
 		pattern := regexp.MustCompile(`"PersonaName"\s*"(.+?)"`)
 		username := pattern.FindStringSubmatch(string(configBytes))[1]
 
-		steamID32, err := strconv.ParseInt(userID, 10, 64)
+		steamID32, _ := strconv.ParseInt(userID, 10, 64)
 		steamID64 := steamID32 + idConversionConstant
 		strSteamID64 := strconv.FormatInt(steamID64, 10)
 		users = append(users, User{username, userID, strSteamID64, userDir})
@@ -93,7 +93,7 @@ func GetProfile(user User) (string, error) {
 	}
 
 	if response.StatusCode >= 400 {
-		return "", errors.New("Profile not found. Make sure you have a public Steam profile")
+		return "", errors.New("profile not found. Make sure you have a public Steam profile")
 	}
 
 	contentBytes, err := ioutil.ReadAll(response.Body)
@@ -104,7 +104,7 @@ func GetProfile(user User) (string, error) {
 
 	profile := string(contentBytes)
 	if strings.Contains(profile, steamProfileErrorMessage) {
-		return "", errors.New("Profile not found")
+		return "", errors.New("profile not found")
 	}
 
 	return profile, nil
@@ -119,7 +119,7 @@ func GetSteamInstallation(steamDir string) (path string, err error) {
 		if err == nil {
 			return steamDir, nil
 		}
-		return "", errors.New("Argument must be a valid Steam directory, or empty for auto detection. Got: " + steamDir)
+		return "", errors.New("argument must be a valid Steam directory, or empty for auto detection. Got: " + steamDir)
 	}
 
 	currentUser, err := user.Current()
@@ -150,5 +150,5 @@ func GetSteamInstallation(steamDir string) (path string, err error) {
 		return programFilesDir, nil
 	}
 
-	return "", errors.New("Could not find Steam installation folder. You can drag and drop the Steam folder into `steamgrid.exe` or call `steamgrid STEAMPATH` for a manual override")
+	return "", errors.New("could not find Steam installation folder; you can drag and drop the Steam folder into `steamgrid.exe` or call `steamgrid STEAMPATH` for a manual override")
 }

@@ -97,17 +97,16 @@ func filterForImages(paths []string) []string {
 
 func loadExisting(overridePath string, gridDir string, game *Game, artStyleExtensions []string) {
 	overridenIDs, _ := filepath.Glob(filepath.Join(overridePath, game.ID+artStyleExtensions[0]+".*"))
-	if overridenIDs != nil && len(overridenIDs) > 0 {
+	if len(overridenIDs) > 0 {
 		loadImage(game, "local file in directory 'games'", overridenIDs[0])
 		return
 	}
-	overridenIDs = filterForImages(overridenIDs)
 
 	if game.Name != "" {
 		re := regexp.MustCompile(`\W+`)
 		globName := re.ReplaceAllString(game.Name, "*")
 		overridenNames, _ := filepath.Glob(filepath.Join(overridePath, insensitiveFilepath(globName)+artStyleExtensions[1]+".*"))
-		if overridenNames != nil && len(overridenNames) > 0 {
+		if len(overridenNames) > 0 {
 			loadImage(game, "local file in directory games/", overridenNames[0])
 			return
 		}
