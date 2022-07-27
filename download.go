@@ -162,6 +162,11 @@ func getSteamGridDBImage(game *Game, artStyleExtensions []string, steamGridDBApi
 		}
 		url := baseURL + "/steam/" + game.ID + artStyleExtensions[3]
 
+		animatedFirst := false
+		if strings.Contains(url, "animated,static") {
+			animatedFirst = true
+		}
+
 		var jsonResponse steamGridDBResponse
 		var responseBytes []byte
 		var err error
@@ -219,6 +224,13 @@ func getSteamGridDBImage(game *Game, artStyleExtensions []string, steamGridDBApi
 		}
 
 		if jsonResponse.Success && len(jsonResponse.Data) >= 1 {
+			if animatedFirst {
+				for _, data := range jsonResponse.Data {
+					if strings.Contains(data.Thumb, "webm") {
+						return data.URL, nil
+					}
+				}
+			}
 			return jsonResponse.Data[0].URL, nil
 		}
 	}
