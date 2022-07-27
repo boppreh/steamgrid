@@ -41,6 +41,10 @@ again when you get more games or want to update the category overlays.
     * *(optional)* Append `-skip<preference>` to skip searching and downloading parts from certain artwork elements. Available choices : `-skipbanner`,`-skipcover`,`-skiphero`,`-skiplogo`. For example: Appending `-skiplogo -skipbanner` will prevent steamgrid to search and download logo and banners for any games.
     * *(optional)* Append `-skipsteam` to not download the default artworks from Steam.
     * *(optional)* Append `-skipgoogle` to skip search and downloads from Google.
+    * *(optional)* Append `--ignoreBackup` to ignore backups when looking for artwork
+    * *(optional)* Append `--ignoreManual` to ignore manual customization when looking for artwork
+    * *(optional)* Append `--skipCategory <category>` to skip processing of games assigned to a specific Steam category
+    * *(optional)* Append `--steamgriddbonly` to search for artwork only in SteamGridDB
     * *(tip)* Run with `--help` to see all available options again.
 6. Read the report and open Steam in grid view to check the results.
 

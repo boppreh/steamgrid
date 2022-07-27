@@ -51,6 +51,10 @@ func startApplication() {
 	nonSteamOnly := flag.Bool("nonsteamonly", false, "Only search artwork for Non-Steam-Games")
 	appIDs := flag.String("appids", "", "Comma separated list of appIds that should be processed")
 	onlyMissingArtwork := flag.Bool("onlymissingartwork", false, "Only download artworks missing on the official servers")
+	ignoreBackup := flag.Bool("ignorebackup", false, "Ignore backups when looking for artwork")
+	ignoreManual := flag.Bool("ignoremanual", false, "Ignore manual customization when looking for artwork")
+	skipCategory := flag.String("skipcategory", "", "Name of the category with games to skip during processing")
+	steamgriddbonly := flag.Bool("steamgriddbonly", false, "Search for artwork only in SteamGridDB")
 	flag.Parse()
 	if flag.NArg() == 1 {
 		steamDir = &flag.Args()[0]
@@ -162,7 +166,7 @@ func startApplication() {
 			errorAndExit(err)
 		}
 
-		games := GetGames(user, *nonSteamOnly, *appIDs)
+		games := GetGames(user, *nonSteamOnly, *appIDs, *skipCategory)
 
 		fmt.Println("Loading existing images and backups...")
 
@@ -190,7 +194,7 @@ func startApplication() {
 				game.OverlayImageBytes = nil
 
 				overridePath := filepath.Join(filepath.Dir(os.Args[0]), "games")
-				loadExisting(overridePath, gridDir, game, artStyleExtensions)
+				loadExisting(overridePath, gridDir, game, artStyleExtensions, *ignoreBackup, *ignoreManual)
 				// This cleans up unused backups and images for the same game but with different extensions.
 				err = removeExisting(gridDir, game.ID, artStyleExtensions)
 				if err != nil {
@@ -201,8 +205,8 @@ func startApplication() {
 				// Download if missing.
 				///////////////////////
 				if game.ImageSource == "" {
-					from, err := DownloadImage(gridDir, game, artStyle, artStyleExtensions, *skipSteam, *steamGridDBApiKey, *IGDBSecret, *IGDBClient, *skipGoogle, *onlyMissingArtwork)
-					if err != nil && err.Error() == "SteamGridDB authorization token is missing or invalid" {
+					from, err := DownloadImage(gridDir, game, artStyle, artStyleExtensions, *skipSteam, *steamGridDBApiKey, *IGDBSecret, *IGDBClient, *skipGoogle, *onlyMissingArtwork, *steamgriddbonly)
+					if err != nil && err.Error() == " SteamGridDB authorization token is missing or invalid" {
 						// Wrong api key
 						*steamGridDBApiKey = ""
 						fmt.Println(err.Error())
