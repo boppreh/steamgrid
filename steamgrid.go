@@ -35,6 +35,7 @@ func startApplication() {
 	// "alternate" "blurred" "white_logo" "material" "no_logo"
 	steamGridDBStyles := flag.String("styles", "alternate", "Comma separated list of styles to download from SteamGridDB.\nExample: \"white_logo,material\"")
 	steamGridDBLogoStyles := flag.String("logostyles", "official", "Comma separated list of styles to download from SteamGridDB.\nExample: \"white,black\"")
+	steamGridDBHeroStyles := flag.String("herostyles", "alternate", "Comma separated list of styles to download from SteamGridDB.\nExample: \"material,blurred\"")
 	// "static" "animated"
 	steamGridDBTypes := flag.String("types", "static", "Comma separated list of types to download from SteamGridDB.\nExample: \"static,animated\"")
 	steamGridDBNsfw := flag.String("nsfw", "false", "Set to false to filter out nsfw, true to only include nsfw, any to include both.")
@@ -66,7 +67,7 @@ func startApplication() {
 	// Process command line flags
 	steamGridDBBannerFilter := "?styles=" + *steamGridDBStyles + "&types=" + *steamGridDBTypes + "&nsfw=" + *steamGridDBNsfw + "&humor=" + *steamGridDBHumor + "&dimensions=" + *steamGridDBBannerDimensions
 	steamGridDBCoverFilter := "?styles=" + *steamGridDBStyles + "&types=" + *steamGridDBTypes + "&nsfw=" + *steamGridDBNsfw + "&humor=" + *steamGridDBHumor + "&dimensions=" + *steamGridDBCoverDimensions
-	steamGridDBHeroFilter := "?styles=" + *steamGridDBStyles + "&types=" + *steamGridDBTypes + "&nsfw=" + *steamGridDBNsfw + "&humor=" + *steamGridDBHumor + "&dimensions=" + *steamGridDBHeroDimensions
+	steamGridDBHeroFilter := "?styles=" + *steamGridDBHeroStyles + "&types=" + *steamGridDBTypes + "&nsfw=" + *steamGridDBNsfw + "&humor=" + *steamGridDBHumor + "&dimensions=" + *steamGridDBHeroDimensions
 	steamGridDBLogoFilter := "?styles=" + *steamGridDBLogoStyles + "&types=" + *steamGridDBTypes + "&nsfw=" + *steamGridDBNsfw + "&humor=" + *steamGridDBHumor
 
 	artStyles := map[string][]string{
