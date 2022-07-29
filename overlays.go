@@ -72,10 +72,13 @@ func LoadOverlays(dir string, artStyles map[string][]string) (overlays map[strin
 
 // ApplyOverlay to the game image, depending on the category. The
 // resulting image is saved over the original.
-func ApplyOverlay(game *Game, overlays map[string]image.Image, artStyleExtensions []string) error {
+func ApplyOverlay(game *Game, overlays map[string]image.Image, artStyleExtensions []string, convertWebpToApng bool, convertWebpToApngCoversBanners bool) error {
 	if game.CleanImageBytes == nil || len(game.Tags) == 0 {
 		return nil
 	}
+
+	convertWebpToApng = convertWebpToApng || (convertWebpToApngCoversBanners &&
+		(strings.Contains(artStyleExtensions[1], "cover")) || (strings.Contains(artStyleExtensions[1], "banner")))
 
 	isApng := false
 	isWebp := false
@@ -183,11 +186,19 @@ func ApplyOverlay(game *Game, overlays map[string]image.Image, artStyleExtension
 				continue
 			}
 			originalSize := image.Point{webpImage.Width, webpImage.Height}
-			webpanim = webpanimation.NewWebpAnimation(webpImage.Width, webpImage.Height, webpImage.LoopCount)
-			webpanim.WebPAnimEncoderOptions.SetKmin(9)
-			webpanim.WebPAnimEncoderOptions.SetKmax(17)
-			webpConfig := webpanimation.NewWebpConfig()
-			webpConfig.SetLossless(1)
+			var webpConfig webpanimation.WebPConfig
+			if convertWebpToApng {
+				apngImage = apng.APNG{
+					LoopCount: uint(webpImage.LoopCount),
+					Frames:    make([]apng.Frame, 0, webpImage.FrameCnt),
+				}
+			} else {
+				webpanim = webpanimation.NewWebpAnimation(webpImage.Width, webpImage.Height, webpImage.LoopCount)
+				webpanim.WebPAnimEncoderOptions.SetKmin(9)
+				webpanim.WebPAnimEncoderOptions.SetKmax(17)
+				webpConfig = webpanimation.NewWebpConfig()
+				webpConfig.SetLossless(1)
+			}
 
 			// Scale overlay to imageSize so the images won't get that huge…
 			overlayScaled := image.NewRGBA(image.Rect(0, 0, originalSize.X, originalSize.Y))
@@ -200,9 +211,10 @@ func ApplyOverlay(game *Game, overlays map[string]image.Image, artStyleExtension
 			}
 
 			i := 0
+			var lastTimestamp int
 			frame, ok := webpanimation.GetNextFrame(webpImage)
 			for ok {
-				if v, o := frame.Image.(*image.RGBA); o {
+				if v, o := frame.Image.(*image.RGBA); o && !convertWebpToApng {
 					result = v
 				} else {
 					result = image.NewRGBA(image.Rect(0, 0, originalSize.X, originalSize.Y))
@@ -210,13 +222,41 @@ func ApplyOverlay(game *Game, overlays map[string]image.Image, artStyleExtension
 				}
 				draw.Draw(result, result.Bounds(), overlayScaled, image.Point{0, 0}, draw.Over)
 
-				err = webpanim.AddFrame(result, frame.Timestamp, webpConfig)
-				fmt.Printf("\rApply Overlay to WEBP. Overlayed frame %8d/%d", i, webpImage.FrameCnt)
+				var delay uint16
+				if i == 0 {
+					delay = 0
+				} else {
+					delay = uint16(frame.Timestamp - lastTimestamp)
+				}
+				lastTimestamp = frame.Timestamp
+
+				if convertWebpToApng {
+					apngImage.Frames = append(apngImage.Frames,
+						apng.Frame{
+							Image:            result,
+							IsDefault:        false,
+							XOffset:          0,
+							YOffset:          0,
+							DisposeOp:        apng.DISPOSE_OP_NONE,
+							BlendOp:          apng.BLEND_OP_OVER,
+							DelayNumerator:   delay,
+							DelayDenominator: 1000,
+						})
+
+					fmt.Printf("\rApply Overlay to WEBP as APNG. Overlayed frame %8d/%d", i, webpImage.FrameCnt)
+				} else {
+					err = webpanim.AddFrame(result, frame.Timestamp, webpConfig)
+					fmt.Printf("\rApply Overlay to WEBP. Overlayed frame %8d/%d", i, webpImage.FrameCnt)
+				}
 				i++
 				frame, ok = webpanimation.GetNextFrame(webpImage)
 			}
 			applied = true
-			fmt.Printf("\rOverlay applied to %v frames of WEBP                                                              \n", webpImage.FrameCnt)
+			if convertWebpToApng {
+				fmt.Printf("\rOverlay applied to %v frames of WEBP as APNG                                                             \n", webpImage.FrameCnt)
+			} else {
+				fmt.Printf("\rOverlay applied to %v frames of WEBP                                                              \n", webpImage.FrameCnt)
+			}
 		} else {
 			fmt.Printf("Apply Overlay to Single Image.")
 			originalSize := gameImage.Bounds().Max
@@ -238,13 +278,61 @@ func ApplyOverlay(game *Game, overlays map[string]image.Image, artStyleExtension
 	}
 
 	if !applied {
-		return nil
+		if isWebp && convertWebpToApng {
+			// Convert to APNG without overlay
+			fmt.Printf("Convert WEBP to APNG.")
+			if webpImage == nil {
+				fmt.Printf("\rWebPImage not initialized.\n")
+				return nil
+			}
+			originalSize := image.Point{webpImage.Width, webpImage.Height}
+			apngImage = apng.APNG{
+				LoopCount: uint(webpImage.LoopCount),
+				Frames:    make([]apng.Frame, 0, webpImage.FrameCnt),
+			}
+
+			i := 0
+			var lastTimestamp int
+			frame, ok := webpanimation.GetNextFrame(webpImage)
+			for ok {
+				result := image.NewRGBA(image.Rect(0, 0, originalSize.X, originalSize.Y))
+				draw.Draw(result, result.Bounds(), frame.Image, image.Point{0, 0}, draw.Over)
+
+				var delay uint16
+				if i == 0 {
+					delay = 0
+				} else {
+					delay = uint16(frame.Timestamp - lastTimestamp)
+				}
+				lastTimestamp = frame.Timestamp
+
+				apngImage.Frames = append(apngImage.Frames,
+					apng.Frame{
+						Image:            result,
+						IsDefault:        false,
+						XOffset:          0,
+						YOffset:          0,
+						DisposeOp:        apng.DISPOSE_OP_NONE,
+						BlendOp:          apng.BLEND_OP_OVER,
+						DelayNumerator:   delay,
+						DelayDenominator: 1000,
+					})
+
+				fmt.Printf("\rCovert to WEBP as APNG. Frame %8d/%d", i, webpImage.FrameCnt)
+				i++
+				frame, ok = webpanimation.GetNextFrame(webpImage)
+			}
+			applied = true
+			fmt.Printf("\rConverted %v frames from WEBP to APNG                                                             \n", webpImage.FrameCnt)
+		} else {
+			return nil
+		}
 	}
 
 	buf := new(bytes.Buffer)
 	if game.ImageExt == ".jpg" || game.ImageExt == ".jpeg" {
 		err = jpeg.Encode(buf, gameImage, &jpeg.Options{95})
-	} else if game.ImageExt == ".png" && isApng {
+	} else if (game.ImageExt == ".png" && isApng) || (isWebp && convertWebpToApng) {
 		err = apng.Encode(buf, apngImage)
 	} else if (game.ImageExt == ".png" && !isWebp) || (formatFound && !isWebp) {
 		err = png.Encode(buf, gameImage)

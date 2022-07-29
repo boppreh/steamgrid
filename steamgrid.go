@@ -71,6 +71,8 @@ func startApplication() {
 	nonSteamOnly := flag.Bool("nonsteamonly", false, "Only search artwork for Non-Steam-Games")
 	appIDs := flag.String("appids", "", "Comma separated list of appIds that should be processed")
 	onlyMissingArtwork := flag.Bool("onlymissingartwork", false, "Only download artworks missing on the official servers")
+	convertWebpToApng := flag.Bool("webpasapng", false, "Convert WEBP animations to APNG.\nMakes them load faster in Steam but takes longer to apply.")
+	convertWebpToApngCoversBanners := flag.Bool("coverwebpasapng", false, "Convert only WEBP animations to APNG (only covers and banners)\nAvoid Hero and Logo which may be too memory and time consuming to apply.")
 	flag.Parse()
 	if flag.NArg() == 1 {
 		steamDir = &flag.Args()[0]
@@ -260,7 +262,7 @@ func startApplication() {
 				// Hero: favorites.hero.png
 				// Logo: favorites.logo.png
 				///////////////////////
-				err := ApplyOverlay(game, overlays, artStyleExtensions)
+				err := ApplyOverlay(game, overlays, artStyleExtensions, *convertWebpToApng, *convertWebpToApngCoversBanners)
 				if err != nil {
 					print(err.Error(), "\n")
 					failedGames[artStyle] = append(failedGames[artStyle], game)
