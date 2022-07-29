@@ -73,12 +73,19 @@ func startApplication() {
 	onlyMissingArtwork := flag.Bool("onlymissingartwork", false, "Only download artworks missing on the official servers")
 	convertWebpToApng := flag.Bool("webpasapng", false, "Convert WEBP animations to APNG.\nMakes them load faster in Steam but takes longer to apply.")
 	convertWebpToApngCoversBanners := flag.Bool("coverwebpasapng", false, "Convert only WEBP animations to APNG (only covers and banners)\nAvoid Hero and Logo which may be too memory and time consuming to apply.")
+	maxMemoryForConvert := flag.Int("convertmaxmem", 0, "Convert only those animations that will use less memory (in GB) than specified here. By default there is no limit.")
 	flag.Parse()
 	if flag.NArg() == 1 {
 		steamDir = &flag.Args()[0]
 	} else if flag.NArg() >= 2 {
 		flag.Usage()
 		os.Exit(1)
+	}
+
+	var maxMem uint64
+	maxMem = 0
+	if *maxMemoryForConvert > 0 {
+		maxMem = uint64(*maxMemoryForConvert) * 1024 * 1024 * 1024
 	}
 
 	// Process command line flags
@@ -262,7 +269,7 @@ func startApplication() {
 				// Hero: favorites.hero.png
 				// Logo: favorites.logo.png
 				///////////////////////
-				err := ApplyOverlay(game, overlays, artStyleExtensions, *convertWebpToApng, *convertWebpToApngCoversBanners)
+				err := ApplyOverlay(game, overlays, artStyleExtensions, *convertWebpToApng, *convertWebpToApngCoversBanners, maxMem)
 				if err != nil {
 					print(err.Error(), "\n")
 					failedGames[artStyle] = append(failedGames[artStyle], game)
@@ -305,6 +312,9 @@ func startApplication() {
 				if err != nil {
 					fmt.Printf("Failed to write image for %v (%v) because: %v\n", game.Name, artStyle, err.Error())
 				}
+
+				game.OverlayImageBytes = nil
+				game.CleanImageBytes = nil
 			}
 		}
 	}

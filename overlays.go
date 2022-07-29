@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"image"
+	"runtime/debug"
 
 	// "image/draw"
 	"image/jpeg"
@@ -72,7 +73,7 @@ func LoadOverlays(dir string, artStyles map[string][]string) (overlays map[strin
 
 // ApplyOverlay to the game image, depending on the category. The
 // resulting image is saved over the original.
-func ApplyOverlay(game *Game, overlays map[string]image.Image, artStyleExtensions []string, convertWebpToApng bool, convertWebpToApngCoversBanners bool) error {
+func ApplyOverlay(game *Game, overlays map[string]image.Image, artStyleExtensions []string, convertWebpToApng bool, convertWebpToApngCoversBanners bool, maxMem uint64) error {
 	if game.CleanImageBytes == nil || len(game.Tags) == 0 {
 		return nil
 	}
@@ -108,6 +109,16 @@ func ApplyOverlay(game *Game, overlays map[string]image.Image, artStyleExtension
 			}
 		} else {
 			isWebp = true
+			memNeeded := uint64(webpImage.Width) * uint64(webpImage.Height) * 4 * uint64(webpImage.FrameCnt)
+			if convertWebpToApng && maxMem > 0 {
+				if memNeeded > maxMem {
+					fmt.Println("WEBP animation too big to convert to APNG. Leaving WEBP.")
+					convertWebpToApng = false
+				} else if memNeeded > maxMem/2 {
+					// free up memory for big conversion
+					debug.FreeOSMemory()
+				}
+			}
 		}
 	}
 
