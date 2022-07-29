@@ -88,10 +88,12 @@ func ApplyOverlay(game *Game, overlays map[string]image.Image, artStyleExtension
 			webpanimation.ReleaseDecoder(webpImage)
 		}
 	}()
+
+	// Try WEBP
 	var gameImage image.Image
-	if strings.Contains(game.ImageExt, "webp") {
+	webpImage, err = webpanimation.GetInfo(bytes.NewBuffer(game.CleanImageBytes))
+	if err == nil {
 		formatFound = true
-		webpImage, err = webpanimation.GetInfo(bytes.NewBuffer(game.CleanImageBytes))
 		if err != nil {
 			formatFound = false
 		} else if webpImage.FrameCnt <= 1 {
@@ -106,6 +108,7 @@ func ApplyOverlay(game *Game, overlays map[string]image.Image, artStyleExtension
 		}
 	}
 
+	// Try APNG
 	var apngImage apng.APNG
 	if !formatFound {
 		apngImage, err = apng.DecodeAll(bytes.NewBuffer(game.CleanImageBytes))
@@ -243,7 +246,7 @@ func ApplyOverlay(game *Game, overlays map[string]image.Image, artStyleExtension
 		err = jpeg.Encode(buf, gameImage, &jpeg.Options{95})
 	} else if game.ImageExt == ".png" && isApng {
 		err = apng.Encode(buf, apngImage)
-	} else if game.ImageExt == ".png" || (formatFound && !isWebp) {
+	} else if (game.ImageExt == ".png" && !isWebp) || (formatFound && !isWebp) {
 		err = png.Encode(buf, gameImage)
 	} else if isWebp {
 		err = webpanim.Encode(buf)
