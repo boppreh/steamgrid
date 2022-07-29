@@ -153,7 +153,6 @@ func ApplyOverlay(game *Game, overlays map[string]image.Image, artStyleExtension
 
 			// Scale overlay to imageSize so the images won't get that huge…
 			overlayScaled := image.NewRGBA(image.Rect(0, 0, originalSize.X, originalSize.Y))
-			result := image.NewRGBA(image.Rect(0, 0, originalSize.X, originalSize.Y))
 			if originalSize.X != overlaySize.X && originalSize.Y != overlaySize.Y {
 				// https://godoc.org/golang.org/x/image/draw#Kernel.Scale
 				draw.ApproxBiLinear.Scale(overlayScaled, overlayScaled.Bounds(), overlayImage, overlayImage.Bounds(), draw.Over, nil)
@@ -162,6 +161,7 @@ func ApplyOverlay(game *Game, overlays map[string]image.Image, artStyleExtension
 			}
 
 			for i, frame := range apngImage.Frames {
+				result := image.NewRGBA(image.Rect(0, 0, originalSize.X, originalSize.Y))
 				// No idea why these offsets are negative:
 				draw.Draw(result, result.Bounds(), frame.Image, image.Point{0 - frame.XOffset, 0 - frame.YOffset}, draw.Over)
 				draw.Draw(result, result.Bounds(), overlayScaled, image.Point{0, 0}, draw.Over)
@@ -188,7 +188,7 @@ func ApplyOverlay(game *Game, overlays map[string]image.Image, artStyleExtension
 
 			// Scale overlay to imageSize so the images won't get that huge…
 			overlayScaled := image.NewRGBA(image.Rect(0, 0, originalSize.X, originalSize.Y))
-			result := image.NewRGBA(image.Rect(0, 0, originalSize.X, originalSize.Y))
+			var result *image.RGBA
 			if originalSize.X != overlaySize.X && originalSize.Y != overlaySize.Y {
 				// https://godoc.org/golang.org/x/image/draw#Kernel.Scale
 				draw.ApproxBiLinear.Scale(overlayScaled, overlayScaled.Bounds(), overlayImage, overlayImage.Bounds(), draw.Over, nil)
@@ -202,6 +202,7 @@ func ApplyOverlay(game *Game, overlays map[string]image.Image, artStyleExtension
 				if v, o := frame.Image.(*image.RGBA); o {
 					result = v
 				} else {
+					result = image.NewRGBA(image.Rect(0, 0, originalSize.X, originalSize.Y))
 					draw.Draw(result, result.Bounds(), frame.Image, image.Point{0, 0}, draw.Over)
 				}
 				draw.Draw(result, result.Bounds(), overlayScaled, image.Point{0, 0}, draw.Over)
