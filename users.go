@@ -39,6 +39,13 @@ func GetUsers(installationDir string) ([]User, error) {
 		userID := userDir.Name()
 		userDir := filepath.Join(userdataDir, userID)
 
+		// Ignore anonymous userdata folder because it's only used for CLI downloads 
+		// and it doesn't have required localconfig.vdf fields
+		userDirName := filepath.Base(userDir)
+		if (userDirName == "anonymous") {
+			continue
+		}
+		
 		configFile := filepath.Join(userDir, "config", "localconfig.vdf")
 		// Malformed user directory. Without the localconfig file we can't get
 		// the username and the game list, so we skip it.
