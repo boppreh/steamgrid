@@ -84,7 +84,7 @@ func GetUsers(installationDir string) ([]User, error) {
 }
 
 // URL to get the game list from the SteamId64.
-const profilePermalinkFormat = `http://steamcommunity.com/profiles/%v/games?tab=all`
+const profilePermalinkFormat = `http://steamcommunity.com/profiles/%v/games?xml=1`
 
 // The Steam website has the terrible habit of returning 200 OK when requests
 // fail, and signaling the error in HTML. So we have to parse the request to
