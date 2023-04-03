@@ -36,7 +36,7 @@ type Game struct {
 
 // Pattern of game declarations in the public profile. It's actually JSON
 // inside Javascript, but this way is easier to extract.
-const profileGamePattern = `\{"appid":\s*(\d+),\s*"name":\s*"(.+?)"`
+const profileGamePattern = `<appID>(\d+)<\/appID>\s*<name><!\[CDATA\[(.+?)\]\]><\/name>`
 
 // Fetches the list of games from the public user profile. This is better than
 // looking locally because the profiles give the full game name, which can be
