@@ -118,7 +118,7 @@ func ApplyOverlay(game *Game, overlays map[string]image.Image, artStyleExtension
 					// https://godoc.org/golang.org/x/image/draw#Kernel.Scale
 					draw.ApproxBiLinear.Scale(overlayScaled, overlayScaled.Bounds(), overlayImage, overlayImage.Bounds(), draw.Over, nil)
 				} else {
-					draw.Draw(overlayScaled, overlayScaled.Bounds(), overlayImage, image.ZP, draw.Src)
+					draw.Draw(overlayScaled, overlayScaled.Bounds(), overlayImage, image.Point{}, draw.Src)
 				}
 				// No idea why these offsets are negative:
 				draw.Draw(result, result.Bounds(), frame.Image, image.Point{0 - frame.XOffset, 0 - frame.YOffset}, draw.Over)
@@ -139,7 +139,7 @@ func ApplyOverlay(game *Game, overlays map[string]image.Image, artStyleExtension
 				// https://godoc.org/golang.org/x/image/draw#Kernel.Scale
 				draw.ApproxBiLinear.Scale(result, result.Bounds(), gameImage, gameImage.Bounds(), draw.Over, nil)
 			} else {
-				draw.Draw(result, result.Bounds(), gameImage, image.ZP, draw.Src)
+				draw.Draw(result, result.Bounds(), gameImage, image.Point{}, draw.Src)
 			}
 			draw.Draw(result, result.Bounds(), overlayImage, image.Point{0, 0}, draw.Over)
 			gameImage = result
@@ -153,7 +153,7 @@ func ApplyOverlay(game *Game, overlays map[string]image.Image, artStyleExtension
 
 	buf := new(bytes.Buffer)
 	if game.ImageExt == ".jpg" || game.ImageExt == ".jpeg" {
-		err = jpeg.Encode(buf, gameImage, &jpeg.Options{95})
+		err = jpeg.Encode(buf, gameImage, &jpeg.Options{Quality: 95})
 	} else if game.ImageExt == ".png" && isApng {
 		err = apng.Encode(buf, apngImage)
 	} else if game.ImageExt == ".png" {

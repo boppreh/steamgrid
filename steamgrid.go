@@ -67,10 +67,10 @@ func startApplication() {
 
 	artStyles := map[string][]string{
 		// artStyle: ["idExtension", "nameExtension", steamUrlExtension, steamGridDbFilter]
-		"Banner": []string{"", ".banner", "header.jpg", steamGridDBBannerFilter},
-		"Cover":  []string{"p", ".cover", "library_600x900_2x.jpg", steamGridDBCoverFilter},
-		"Hero":   []string{"_hero", ".hero", "library_hero.jpg", steamGridDBHeroFilter},
-		"Logo":   []string{"_logo", ".logo", "logo.png", steamGridDBLogoFilter},
+		"Banner": {"", ".banner", "header.jpg", steamGridDBBannerFilter},
+		"Cover":  {"p", ".cover", "library_600x900_2x.jpg", steamGridDBCoverFilter},
+		"Hero":   {"_hero", ".hero", "library_hero.jpg", steamGridDBHeroFilter},
+		"Logo":   {"_logo", ".logo", "logo.png", steamGridDBLogoFilter},
 	}
 
 	if *skipBanner {
@@ -86,11 +86,11 @@ func startApplication() {
 		delete(artStyles, "Logo")
 	}
 	if len(artStyles) == 0 {
-		errorAndExit(errors.New("No artStyles, nothing to do…"))
+		errorAndExit(errors.New("no artStyles, nothing to do…"))
 	}
 
 	if *skipSteam && *onlyMissingArtwork {
-		errorAndExit(errors.New("Can't check if official artwork is missing with steam turned off"))
+		errorAndExit(errors.New("can't check if official artwork is missing with steam turned off"))
 	}
 
 	fmt.Println("Loading overlays...")
@@ -116,40 +116,40 @@ func startApplication() {
 		errorAndExit(err)
 	}
 	if len(users) == 0 {
-		errorAndExit(errors.New("No users found at Steam/userdata. Have you used Steam before in this computer?"))
+		errorAndExit(errors.New("no users found at Steam/userdata. Have you used Steam before in this computer?"))
 	}
 
 	nOverlaysApplied := 0
 	nDownloaded := 0
 	notFounds := map[string][]*Game{
-		"Banner": []*Game{},
-		"Cover":  []*Game{},
-		"Hero":   []*Game{},
-		"Logo":   []*Game{},
+		"Banner": {},
+		"Cover":  {},
+		"Hero":   {},
+		"Logo":   {},
 	}
 	steamGridDB := map[string][]*Game{
-		"Banner": []*Game{},
-		"Cover":  []*Game{},
-		"Hero":   []*Game{},
-		"Logo":   []*Game{},
+		"Banner": {},
+		"Cover":  {},
+		"Hero":   {},
+		"Logo":   {},
 	}
 	IGDB := map[string][]*Game{
-		"Banner": []*Game{},
-		"Cover":  []*Game{},
-		"Hero":   []*Game{},
-		"Logo":   []*Game{},
+		"Banner": {},
+		"Cover":  {},
+		"Hero":   {},
+		"Logo":   {},
 	}
 	searchedGames := map[string][]*Game{
-		"Banner": []*Game{},
-		"Cover":  []*Game{},
-		"Hero":   []*Game{},
-		"Logo":   []*Game{},
+		"Banner": {},
+		"Cover":  {},
+		"Hero":   {},
+		"Logo":   {},
 	}
 	failedGames := map[string][]*Game{
-		"Banner": []*Game{},
-		"Cover":  []*Game{},
-		"Hero":   []*Game{},
-		"Logo":   []*Game{},
+		"Banner": {},
+		"Cover":  {},
+		"Hero":   {},
+		"Logo":   {},
 	}
 	var errorMessages []string
 
@@ -265,15 +265,16 @@ func startApplication() {
 				// Copy with legacy naming for Big Picture mode
 				if artStyle == "Banner" {
 					// use appID
-					id, err := strconv.ParseUint(game.ID, 10, 64)
+					id, errInternal := strconv.ParseUint(game.ID, 10, 64)
 					if game.LegacyID != 0 {
 						// old target+exe format for custom shortcuts
 						id = game.LegacyID
 					}
-					if err == nil {
+					if errInternal == nil {
 						imagePath := filepath.Join(gridDir, strconv.FormatUint(id<<32|0x02000000, 10)+artStyleExtensions[0]+game.ImageExt)
-						err = ioutil.WriteFile(imagePath, game.OverlayImageBytes, 0666)
+						errInternal = ioutil.WriteFile(imagePath, game.OverlayImageBytes, 0666)
 					}
+					err = errInternal
 				}
 				if err != nil {
 					fmt.Printf("Failed to write image for %v (%v) because: %v\n", game.Name, artStyle, err.Error())

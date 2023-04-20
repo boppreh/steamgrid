@@ -182,7 +182,7 @@ func getSteamGridDBImage(game *Game, artStyleExtensions []string, steamGridDBApi
 			url = steamGridDBBaseURL + "/search/autocomplete/" + game.Name + artStyleExtensions[3]
 			responseBytes, err = steamGridDBGetRequest(url, steamGridDBApiKey)
 			if err != nil && err.Error() == "401" {
-				return "", errors.New("SteamGridDB authorization token is missing or invalid")
+				return "", errors.New(" SteamGridDB authorization token is missing or invalid")
 			} else if err != nil {
 				return "", err
 			}
@@ -190,7 +190,7 @@ func getSteamGridDBImage(game *Game, artStyleExtensions []string, steamGridDBApi
 			var jsonSearchResponse steamGridDBSearchResponse
 			err = json.Unmarshal(responseBytes, &jsonSearchResponse)
 			if err != nil {
-				return "", errors.New("Best search match doesn't has a requested type or style")
+				return "", errors.New("best search match doesn't has a requested type or style")
 			}
 
 			SteamGridDBGameID := -1
@@ -246,7 +246,7 @@ type igdbCover struct {
 func igdbPostRequest(url string, body string, IGDBSecret string, IGDBClient string) ([]byte, error) {
 
 	tokenClient := &http.Client{}
-	reqq, err := http.NewRequest("POST", "https://id.twitch.tv/oauth2/token?client_id="+IGDBClient+"&client_secret="+IGDBSecret+"&grant_type=client_credentials", strings.NewReader(body))
+	reqq, _ := http.NewRequest("POST", "https://id.twitch.tv/oauth2/token?client_id="+IGDBClient+"&client_secret="+IGDBSecret+"&grant_type=client_credentials", strings.NewReader(body))
 	tokenResponse, err := tokenClient.Do(reqq)
 	if err != nil {
 		return nil, err
@@ -441,7 +441,7 @@ func DownloadImage(gridDir string, game *Game, artStyle string, artStyleExtensio
 		game.ImageExt = ".png"
 	}
 
-	imageBytes, err := ioutil.ReadAll(response.Body)
+	imageBytes, _ := ioutil.ReadAll(response.Body)
 	response.Body.Close()
 
 	// catch false aspect ratios
@@ -478,7 +478,7 @@ func getGameName(gameID string) string {
 
 	pattern := regexp.MustCompile("<tr>\n<td>Name</td>\\s*<td itemprop=\"name\">(.*?)</td>")
 	match := pattern.FindStringSubmatch(string(page))
-	if match == nil || len(match) == 0 {
+	if len(match) == 0 {
 		return ""
 	}
 
