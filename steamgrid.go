@@ -51,6 +51,7 @@ func startApplication() {
 	nonSteamOnly := flag.Bool("nonsteamonly", false, "Only search artwork for Non-Steam-Games")
 	appIDs := flag.String("appids", "", "Comma separated list of appIds that should be processed")
 	onlyMissingArtwork := flag.Bool("onlymissingartwork", false, "Only download artworks missing on the official servers")
+	autoClose := flag.Bool("autoclose", false, "Automatically end process after finishing")
 	flag.Parse()
 	if flag.NArg() == 1 {
 		steamDir = &flag.Args()[0]
@@ -339,8 +340,10 @@ func startApplication() {
 
 		fmt.Printf("\n\n")
 	}
-
+	
 	fmt.Println("Open Steam in grid view to see the results!\n\nPress enter to close.")
+	if !autoClose {
+		bufio.NewReader(os.Stdin).ReadBytes('\n')
+	}
 
-	bufio.NewReader(os.Stdin).ReadBytes('\n')
 }
