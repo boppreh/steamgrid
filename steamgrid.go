@@ -11,7 +11,9 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -25,6 +27,24 @@ func errorAndExit(err error) {
 func main() {
 	http.DefaultTransport.(*http.Transport).ResponseHeaderTimeout = time.Second * 10
 	startApplication()
+}
+
+func bToMb(b uint64) uint64 {
+	return b / 1024 / 1024
+}
+
+func printMemStats(endline ...bool) {
+	var m runtime.MemStats
+	runtime.ReadMemStats(&m)
+	// For info on each, see: https://golang.org/pkg/runtime/#MemStats
+	fmt.Printf("Alloc = %v MiB", bToMb(m.Alloc))
+	fmt.Printf("\tTotalAlloc = %v MiB", bToMb(m.TotalAlloc))
+	//fmt.Printf("\tSys = %v MiB", bToMb(m.Sys))
+	//fmt.Printf("\tNumGC = %v", m.NumGC)
+
+	if len(endline) == 0 || endline[0] {
+		fmt.Printf("\n")
+	}
 }
 
 func startApplication() {
@@ -51,12 +71,21 @@ func startApplication() {
 	nonSteamOnly := flag.Bool("nonsteamonly", false, "Only search artwork for Non-Steam-Games")
 	appIDs := flag.String("appids", "", "Comma separated list of appIds that should be processed")
 	onlyMissingArtwork := flag.Bool("onlymissingartwork", false, "Only download artworks missing on the official servers")
+	convertWebpToApng := flag.Bool("webpasapng", false, "Convert WEBP animations to APNG.\nMakes them load faster in Steam but takes longer to apply.")
+	convertWebpToApngCoversBanners := flag.Bool("coverwebpasapng", false, "Convert only WEBP animations to APNG (only covers and banners)\nAvoid Hero and Logo which may be too memory and time consuming to apply.")
+	maxMemoryForConvert := flag.Int("convertmaxmem", 0, "Convert only those animations that will use less memory (in GB) than specified here. By default there is no limit.")
 	flag.Parse()
 	if flag.NArg() == 1 {
 		steamDir = &flag.Args()[0]
 	} else if flag.NArg() >= 2 {
 		flag.Usage()
 		os.Exit(1)
+	}
+
+	var maxMem uint64
+	maxMem = 0
+	if *maxMemoryForConvert > 0 {
+		maxMem = uint64(*maxMemoryForConvert) * 1024 * 1024 * 1024
 	}
 
 	// Process command line flags
@@ -180,6 +209,7 @@ func startApplication() {
 			} else {
 				name = "unknown game with id " + game.ID
 			}
+
 			fmt.Printf("Processing %v (%v/%v)\n", name, i, len(games))
 
 			for artStyle, artStyleExtensions := range artStyles {
@@ -239,7 +269,7 @@ func startApplication() {
 				// Hero: favorites.hero.png
 				// Logo: favorites.logo.png
 				///////////////////////
-				err := ApplyOverlay(game, overlays, artStyleExtensions)
+				err := ApplyOverlay(game, overlays, artStyleExtensions, *convertWebpToApng, *convertWebpToApngCoversBanners, maxMem)
 				if err != nil {
 					print(err.Error(), "\n")
 					failedGames[artStyle] = append(failedGames[artStyle], game)
@@ -257,6 +287,10 @@ func startApplication() {
 				err = backupGame(gridDir, game, artStyleExtensions)
 				if err != nil {
 					errorAndExit(err)
+				}
+
+				if strings.Contains(game.ImageExt, "webp") {
+					game.ImageExt = ".png"
 				}
 
 				imagePath := filepath.Join(gridDir, game.ID+artStyleExtensions[0]+game.ImageExt)
@@ -278,6 +312,9 @@ func startApplication() {
 				if err != nil {
 					fmt.Printf("Failed to write image for %v (%v) because: %v\n", game.Name, artStyle, err.Error())
 				}
+
+				game.OverlayImageBytes = nil
+				game.CleanImageBytes = nil
 			}
 		}
 	}

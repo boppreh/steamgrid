@@ -41,6 +41,9 @@ again when you get more games or want to update the category overlays.
     * *(optional)* Append `-skip<preference>` to skip searching and downloading parts from certain artwork elements. Available choices : `-skipbanner`,`-skipcover`,`-skiphero`,`-skiplogo`. For example: Appending `-skiplogo -skipbanner` will prevent steamgrid to search and download logo and banners for any games.
     * *(optional)* Append `-skipsteam` to not download the default artworks from Steam.
     * *(optional)* Append `-skipgoogle` to skip search and downloads from Google.
+    * *(optional)* Append `--webpasapng` to convert all WEBP animations to APNG - they are displayed faster but take more time and memory to convert
+    * *(optional)* Append `--coverwebpasapng` to convert covers and banners' WEBP animations to APNG - skip hero and logo as they are larger
+    * *(optional)* Append `--convertmaxmem <GB>` to limit memory usage for conversion from WEBP to APNG, if it would go over the limit, the conversion will be skipped.
     * *(tip)* Run with `--help` to see all available options again.
 6. Read the report and open Steam in grid view to check the results.
 
