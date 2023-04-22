@@ -35,12 +35,19 @@ again when you get more games or want to update the category overlays.
     * *(optional)* Append `--igdbsecret <igdb secret>` if you've genereated one before.
     * *(optional)* Append `--types <preference>` to choose your preferences between animated steam covers or static ones Available choices : `animated`,`static`. Default : `static`. You can use `animated,static` to download both while preferring animated covers, and `static,animated` for preferring static covers.
     * *(optional)* Append `--styles <preference>` to choose your preferences between the different covers styles from steamgriddb. Available choices : `material`,`white_logo`,`alternate`,`blurred`,`no_logo`. Default: `alternate`. You can also input multiple comma-separated choices in the same manners of the `--types` argument.
+    * *(optional)* Append `--herostyles <preference>` to choose style for hero artwork. Available choices : `material`,`alternate`,`blurred`. Default: `alternate`.
+    * *(optional)* Append `--logostyles <preference>` to choose style for logo artwork. Available choices : `official`,`white`,`black`,`custom`. Default: `official`.
     * *(optional)* Append `--appids <appid1,appid2>` to only process the specified appID(s)
     * *(optional)* Append `--onlymissingartwork` to only download artworks missing on the official servers.
     * *(optional)* Append `-nonsteamonly` to only search artworks for non-steam games added onto the Steam client.
     * *(optional)* Append `-skip<preference>` to skip searching and downloading parts from certain artwork elements. Available choices : `-skipbanner`,`-skipcover`,`-skiphero`,`-skiplogo`. For example: Appending `-skiplogo -skipbanner` will prevent steamgrid to search and download logo and banners for any games.
     * *(optional)* Append `-skipsteam` to not download the default artworks from Steam.
     * *(optional)* Append `-skipgoogle` to skip search and downloads from Google.
+    * *(optional)* Append `--ignorebackup` to ignore backups when looking for artwork
+    * *(optional)* Append `--ignoremanual` to ignore manual customization when looking for artwork
+    * *(optional)* Append `--skipCategory <category>` to skip processing of games assigned to a specific Steam category
+    * *(optional)* Append `--steamgriddbonly` to search for artwork only in SteamGridDB
+    * *(optional)* Append `--namefilter "<text>"` to process only games with names that contain provided *text*
     * *(tip)* Run with `--help` to see all available options again.
 6. Read the report and open Steam in grid view to check the results.
 

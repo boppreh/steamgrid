@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -35,6 +36,7 @@ func startApplication() {
 	// "alternate" "blurred" "white_logo" "material" "no_logo"
 	steamGridDBStyles := flag.String("styles", "alternate", "Comma separated list of styles to download from SteamGridDB.\nExample: \"white_logo,material\"")
 	steamGridDBLogoStyles := flag.String("logostyles", "official", "Comma separated list of styles to download from SteamGridDB.\nExample: \"white,black\"")
+	steamGridDBHeroStyles := flag.String("herostyles", "alternate", "Comma separated list of styles to download from SteamGridDB.\nExample: \"material,blurred\"")
 	// "static" "animated"
 	steamGridDBTypes := flag.String("types", "static", "Comma separated list of types to download from SteamGridDB.\nExample: \"static,animated\"")
 	steamGridDBNsfw := flag.String("nsfw", "false", "Set to false to filter out nsfw, true to only include nsfw, any to include both.")
@@ -51,6 +53,11 @@ func startApplication() {
 	nonSteamOnly := flag.Bool("nonsteamonly", false, "Only search artwork for Non-Steam-Games")
 	appIDs := flag.String("appids", "", "Comma separated list of appIds that should be processed")
 	onlyMissingArtwork := flag.Bool("onlymissingartwork", false, "Only download artworks missing on the official servers")
+	ignoreBackup := flag.Bool("ignorebackup", false, "Ignore backups when looking for artwork")
+	ignoreManual := flag.Bool("ignoremanual", false, "Ignore manual customization when looking for artwork")
+	skipCategory := flag.String("skipcategory", "", "Name of the category with games to skip during processing")
+	steamgriddbonly := flag.Bool("steamgriddbonly", false, "Search for artwork only in SteamGridDB")
+	nameFilter := flag.String("namefilter", "", "Process only games with name that contains this value")
 	flag.Parse()
 	if flag.NArg() == 1 {
 		steamDir = &flag.Args()[0]
@@ -62,7 +69,7 @@ func startApplication() {
 	// Process command line flags
 	steamGridDBBannerFilter := "?styles=" + *steamGridDBStyles + "&types=" + *steamGridDBTypes + "&nsfw=" + *steamGridDBNsfw + "&humor=" + *steamGridDBHumor + "&dimensions=" + *steamGridDBBannerDimensions
 	steamGridDBCoverFilter := "?styles=" + *steamGridDBStyles + "&types=" + *steamGridDBTypes + "&nsfw=" + *steamGridDBNsfw + "&humor=" + *steamGridDBHumor + "&dimensions=" + *steamGridDBCoverDimensions
-	steamGridDBHeroFilter := "?styles=" + *steamGridDBStyles + "&types=" + *steamGridDBTypes + "&nsfw=" + *steamGridDBNsfw + "&humor=" + *steamGridDBHumor + "&dimensions=" + *steamGridDBHeroDimensions
+	steamGridDBHeroFilter := "?styles=" + *steamGridDBHeroStyles + "&types=" + *steamGridDBTypes + "&nsfw=" + *steamGridDBNsfw + "&humor=" + *steamGridDBHumor + "&dimensions=" + *steamGridDBHeroDimensions
 	steamGridDBLogoFilter := "?styles=" + *steamGridDBLogoStyles + "&types=" + *steamGridDBTypes + "&nsfw=" + *steamGridDBNsfw + "&humor=" + *steamGridDBHumor
 
 	artStyles := map[string][]string{
@@ -162,7 +169,7 @@ func startApplication() {
 			errorAndExit(err)
 		}
 
-		games := GetGames(user, *nonSteamOnly, *appIDs)
+		games := GetGames(user, *nonSteamOnly, *appIDs, *skipCategory)
 
 		fmt.Println("Loading existing images and backups...")
 
@@ -180,6 +187,11 @@ func startApplication() {
 			} else {
 				name = "unknown game with id " + game.ID
 			}
+
+			if len(*nameFilter) > 0 && !strings.Contains(name, *nameFilter) {
+				continue
+			}
+
 			fmt.Printf("Processing %v (%v/%v)\n", name, i, len(games))
 
 			for artStyle, artStyleExtensions := range artStyles {
@@ -190,7 +202,7 @@ func startApplication() {
 				game.OverlayImageBytes = nil
 
 				overridePath := filepath.Join(filepath.Dir(os.Args[0]), "games")
-				loadExisting(overridePath, gridDir, game, artStyleExtensions)
+				loadExisting(overridePath, gridDir, game, artStyleExtensions, *ignoreBackup, *ignoreManual)
 				// This cleans up unused backups and images for the same game but with different extensions.
 				err = removeExisting(gridDir, game.ID, artStyleExtensions)
 				if err != nil {
@@ -201,8 +213,8 @@ func startApplication() {
 				// Download if missing.
 				///////////////////////
 				if game.ImageSource == "" {
-					from, err := DownloadImage(gridDir, game, artStyle, artStyleExtensions, *skipSteam, *steamGridDBApiKey, *IGDBSecret, *IGDBClient, *skipGoogle, *onlyMissingArtwork)
-					if err != nil && err.Error() == "SteamGridDB authorization token is missing or invalid" {
+					from, err := DownloadImage(gridDir, game, artStyle, artStyleExtensions, *skipSteam, *steamGridDBApiKey, *IGDBSecret, *IGDBClient, *skipGoogle, *onlyMissingArtwork, *steamgriddbonly)
+					if err != nil && err.Error() == " SteamGridDB authorization token is missing or invalid" {
 						// Wrong api key
 						*steamGridDBApiKey = ""
 						fmt.Println(err.Error())

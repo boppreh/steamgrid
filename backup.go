@@ -95,7 +95,7 @@ func filterForImages(paths []string) []string {
 	return matchedPaths
 }
 
-func loadExisting(overridePath string, gridDir string, game *Game, artStyleExtensions []string) {
+func loadExisting(overridePath string, gridDir string, game *Game, artStyleExtensions []string, ignoreBackup bool, ignoreManual bool) {
 	overridenIDs, _ := filepath.Glob(filepath.Join(overridePath, game.ID+artStyleExtensions[0]+".*"))
 	if overridenIDs != nil && len(overridenIDs) > 0 {
 		loadImage(game, "local file in directory 'games'", overridenIDs[0])
@@ -126,16 +126,18 @@ func loadExisting(overridePath string, gridDir string, game *Game, artStyleExten
 	files, err := filepath.Glob(filepath.Join(gridDir, game.ID+artStyleExtensions[0]+".*"))
 	files = filterForImages(files)
 	if err == nil && len(files) > 0 {
-		err = loadImage(game, "manual customization", files[0])
-		if err == nil {
-			// set as overlay to check for hash in getBackupPath()
-			game.OverlayImageBytes = game.CleanImageBytes
+		if !ignoreManual {
+			err = loadImage(game, "manual customization", files[0])
+			if err == nil && !ignoreBackup {
+				// set as overlay to check for hash in getBackupPath()
+				game.OverlayImageBytes = game.CleanImageBytes
 
-			// See if there exists a backup image with no overlays or modifications.
-			loadImage(game, "backup", getBackupPath(gridDir, game, artStyleExtensions))
+				// See if there exists a backup image with no overlays or modifications.
+				loadImage(game, "backup", getBackupPath(gridDir, game, artStyleExtensions))
 
-			// remove overlay
-			game.OverlayImageBytes = nil
+				// remove overlay
+				game.OverlayImageBytes = nil
+			}
 		}
 	}
 

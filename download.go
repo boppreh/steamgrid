@@ -175,7 +175,7 @@ func getSteamGridDBImage(game *Game, artStyleExtensions []string, steamGridDBApi
 
 		// Authorization token is missing or invalid
 		if err != nil && err.Error() == "401" {
-			return "", errors.New("SteamGridDB authorization token is missing or invalid")
+			return "", errors.New(" SteamGridDB authorization token is missing or invalid")
 			// Could not find game with that id
 		} else if err != nil && err.Error() == "404" {
 			// Try searching for the name…
@@ -356,9 +356,9 @@ const steamCdnURLFormat = `cdn.akamai.steamstatic.com/steam/apps/%v/`
 // sources. Returns the final response received and a flag indicating if it was
 // from a Google search (useful because we want to log the lower quality
 // images).
-func getImageAlternatives(game *Game, artStyle string, artStyleExtensions []string, skipSteam bool, steamGridDBApiKey string, IGDBSecret string, IGDBClient string, skipGoogle bool, onlyMissingArtwork bool) (response *http.Response, from string, err error) {
+func getImageAlternatives(game *Game, artStyle string, artStyleExtensions []string, skipSteam bool, steamGridDBApiKey string, IGDBSecret string, IGDBClient string, skipGoogle bool, onlyMissingArtwork bool, steamGridDBOnly bool) (response *http.Response, from string, err error) {
 	from = "steam server"
-	if !skipSteam {
+	if !skipSteam && !steamGridDBOnly {
 		response, err = tryDownload(fmt.Sprintf(akamaiURLFormat+artStyleExtensions[2], game.ID))
 		if err == nil && response != nil {
 			if onlyMissingArtwork {
@@ -388,7 +388,7 @@ func getImageAlternatives(game *Game, artStyle string, artStyleExtensions []stri
 	}
 
 	// IGDB has mostly cover styles
-	if artStyle == "Cover" && IGDBClient != "" && IGDBSecret != "" && url == "" {
+	if artStyle == "Cover" && IGDBClient != "" && IGDBSecret != "" && url == "" && !steamGridDBOnly {
 		from = "IGDB"
 		url, err = getIGDBImage(game.Name, IGDBSecret, IGDBClient)
 		if err != nil {
@@ -397,7 +397,7 @@ func getImageAlternatives(game *Game, artStyle string, artStyleExtensions []stri
 	}
 
 	// Skip for Covers, bad results
-	if !skipGoogle && artStyle == "Banner" && url == "" {
+	if !skipGoogle && artStyle == "Banner" && url == "" && !steamGridDBOnly {
 		from = "search"
 		url, err = getGoogleImage(game.Name, artStyleExtensions)
 		if err != nil {
@@ -416,8 +416,8 @@ func getImageAlternatives(game *Game, artStyle string, artStyleExtensions []stri
 // DownloadImage tries to download the game images, saving it in game.ImageBytes. Returns
 // flags indicating if the operation succeeded and if the image downloaded was
 // from a search.
-func DownloadImage(gridDir string, game *Game, artStyle string, artStyleExtensions []string, skipSteam bool, steamGridDBApiKey string, IGDBSecret string, IGDBClient string, skipGoogle bool, onlyMissingArtwork bool) (string, error) {
-	response, from, err := getImageAlternatives(game, artStyle, artStyleExtensions, skipSteam, steamGridDBApiKey, IGDBSecret, IGDBClient, skipGoogle, onlyMissingArtwork)
+func DownloadImage(gridDir string, game *Game, artStyle string, artStyleExtensions []string, skipSteam bool, steamGridDBApiKey string, IGDBSecret string, IGDBClient string, skipGoogle bool, onlyMissingArtwork bool, steamGridDBOnly bool) (string, error) {
+	response, from, err := getImageAlternatives(game, artStyle, artStyleExtensions, skipSteam, steamGridDBApiKey, IGDBSecret, IGDBClient, skipGoogle, onlyMissingArtwork, steamGridDBOnly)
 	if response == nil || err != nil {
 		return "", err
 	}

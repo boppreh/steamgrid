@@ -61,7 +61,7 @@ func addGamesFromProfile(user User, games map[string]*Game) (err error) {
 
 // Loads the categories list. This finds the categories for the games loaded
 // from the profile and sometimes find new games, although without names.
-func addUnknownGames(user User, games map[string]*Game) {
+func addUnknownGames(user User, games map[string]*Game, skipCategory string) {
 	// Fetch game categories from local file.
 	sharedConfFile := filepath.Join(user.Dir, "7", "remote", "sharedconfig.vdf")
 	if _, err := os.Stat(sharedConfFile); err != nil {
@@ -93,6 +93,11 @@ func addUnknownGames(user User, games map[string]*Game) {
 				gameName := ""
 				games[gameID] = &Game{gameID, gameName, []string{tag}, "", nil, nil, "", false, 0}
 			}
+
+			if len(skipCategory) > 0 && strings.Contains(strings.ToLower(tag), strings.ToLower(skipCategory)) {
+				delete(games, gameID)
+				break
+			}
 		}
 	}
 }
@@ -102,7 +107,7 @@ func addUnknownGames(user User, games map[string]*Game) {
 // It contains the non-Steam games with names, target (exe location) and
 // tags/categories. To create a grid image we must compute the Steam ID, which
 // is just crc32(target + label) + "02000000", using IEEE standard polynomials.
-func addNonSteamGames(user User, games map[string]*Game) {
+func addNonSteamGames(user User, games map[string]*Game, skipCategory string) {
 	shortcutsVdf := filepath.Join(user.Dir, "config", "shortcuts.vdf")
 	if _, err := os.Stat(shortcutsVdf); err != nil {
 		return
@@ -132,13 +137,18 @@ func addNonSteamGames(user User, games map[string]*Game) {
 		for _, tagGroups := range tagsPattern.FindAllSubmatch(tagsText, -1) {
 			tag := tagGroups[1]
 			game.Tags = append(game.Tags, string(tag))
+
+			if len(skipCategory) > 0 && strings.Contains(strings.ToLower(string(tag)), strings.ToLower(skipCategory)) {
+				delete(games, gameID)
+				break
+			}
 		}
 	}
 }
 
 // GetGames returns all games from a given user, using both the public profile and local
 // files to gather the data. Returns a map of game by ID.
-func GetGames(user User, nonSteamOnly bool, appIDs string) map[string]*Game {
+func GetGames(user User, nonSteamOnly bool, appIDs string, skipCategory string) map[string]*Game {
 	games := make(map[string]*Game, 0)
 
 	if appIDs != "" {
@@ -150,9 +160,9 @@ func GetGames(user User, nonSteamOnly bool, appIDs string) map[string]*Game {
 
 	if !nonSteamOnly {
 		addGamesFromProfile(user, games)
-		addUnknownGames(user, games)
+		addUnknownGames(user, games, skipCategory)
 	}
-	addNonSteamGames(user, games)
+	addNonSteamGames(user, games, skipCategory)
 
 	return games
 }
