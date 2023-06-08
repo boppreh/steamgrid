@@ -84,7 +84,9 @@ func GetUsers(installationDir string) ([]User, error) {
 }
 
 // URL to get the game list from the SteamId64.
-const profilePermalinkFormat = `http://steamcommunity.com/profiles/%v/games?xml=1`
+const profileCommunityFormat = `http://steamcommunity.com/profiles/%v/games?xml=1`
+// URL to get the game list from the Steam Web API using an API key
+const profileWebApiFormat = `https://api.steampowered.com/IPlayerService/GetOwnedGames/v1/?key=%v&steamid=%v&include_played_free_games=true&include_appinfo=true&format=json`
 
 // The Steam website has the terrible habit of returning 200 OK when requests
 // fail, and signaling the error in HTML. So we have to parse the request to
@@ -93,8 +95,14 @@ const profilePermalinkFormat = `http://steamcommunity.com/profiles/%v/games?xml=
 const steamProfileErrorMessage = `The specified profile could not be found.`
 
 // GetProfile returns the HTML profile from a user from their SteamId32.
-func GetProfile(user User) (string, error) {
-	response, err := http.Get(fmt.Sprintf(profilePermalinkFormat, user.SteamID64))
+func GetProfile(user User, apiKey string) (string, error) {
+	var response *http.Response
+	var err error
+	if len(apiKey) > 0 {
+		response, err = http.Get(fmt.Sprintf(profileWebApiFormat, apiKey, user.SteamID64))
+	} else {
+		response, err = http.Get(fmt.Sprintf(profileCommunityFormat, user.SteamID64))
+	}
 	if err != nil {
 		return "", err
 	}

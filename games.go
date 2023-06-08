@@ -34,21 +34,30 @@ type Game struct {
 	LegacyID uint64
 }
 
-// Pattern of game declarations in the public profile. It's actually JSON
-// inside Javascript, but this way is easier to extract.
-const profileGamePattern = `<appID>(\d+)<\/appID>\s*<name><!\[CDATA\[(.+?)\]\]><\/name>`
+// Pattern of game declarations in the public profile.
+//The Community API request uses XML
+const profileGamePatternCommunity = `<appID>(\d+)<\/appID>\s*<name><!\[CDATA\[(.+?)\]\]><\/name>`
+//The Steam Web API request uses JSON, as some characters break when requested as XML
+const profileGamePatternWebApi = `"appid":\s*(\d+),\s*"name":\s*"(.+?)"`
 
 // Fetches the list of games from the public user profile. This is better than
 // looking locally because the profiles give the full game name, which can be
 // used for image searches later on.
-func addGamesFromProfile(user User, games map[string]*Game) (err error) {
-	profile, err := GetProfile(user)
+func addGamesFromProfile(user User, games map[string]*Game, apiKey string) (err error) {
+	profile, err := GetProfile(user, apiKey)
 	if err != nil {
 		return
 	}
+	
+	var gamePattern string
+	if len(apiKey) > 0 {
+		gamePattern = profileGamePatternWebApi
+	} else {
+		gamePattern = profileGamePatternCommunity
+	}
 
 	// Fetch game list from public profile.
-	pattern := regexp.MustCompile(profileGamePattern)
+	pattern := regexp.MustCompile(gamePattern)
 	for _, groups := range pattern.FindAllStringSubmatch(profile, -1) {
 		gameID := groups[1]
 		gameName := groups[2]
@@ -138,7 +147,7 @@ func addNonSteamGames(user User, games map[string]*Game) {
 
 // GetGames returns all games from a given user, using both the public profile and local
 // files to gather the data. Returns a map of game by ID.
-func GetGames(user User, nonSteamOnly bool, appIDs string) map[string]*Game {
+func GetGames(user User, nonSteamOnly bool, appIDs string, apiKey string) map[string]*Game {
 	games := make(map[string]*Game, 0)
 
 	if appIDs != "" {
@@ -149,7 +158,7 @@ func GetGames(user User, nonSteamOnly bool, appIDs string) map[string]*Game {
 	}
 
 	if !nonSteamOnly {
-		addGamesFromProfile(user, games)
+		addGamesFromProfile(user, games, apiKey)
 		addUnknownGames(user, games)
 	}
 	addNonSteamGames(user, games)

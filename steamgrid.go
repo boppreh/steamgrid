@@ -51,6 +51,7 @@ func startApplication() {
 	nonSteamOnly := flag.Bool("nonsteamonly", false, "Only search artwork for Non-Steam-Games")
 	appIDs := flag.String("appids", "", "Comma separated list of appIds that should be processed")
 	onlyMissingArtwork := flag.Bool("onlymissingartwork", false, "Only download artworks missing on the official servers")
+	apiKey := flag.String("apikey", "", "Steam Web API key to use for game list request")
 	flag.Parse()
 	if flag.NArg() == 1 {
 		steamDir = &flag.Args()[0]
@@ -162,7 +163,7 @@ func startApplication() {
 			errorAndExit(err)
 		}
 
-		games := GetGames(user, *nonSteamOnly, *appIDs)
+		games := GetGames(user, *nonSteamOnly, *appIDs, *apiKey)
 
 		fmt.Println("Loading existing images and backups...")
 
