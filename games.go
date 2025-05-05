@@ -3,9 +3,11 @@ package main
 import (
 	"bytes"
 	"encoding/binary"
+	"encoding/json"
 	"fmt"
 	"hash/crc32"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -128,12 +130,63 @@ func addNonSteamGames(user User, games map[string]*Game) {
 		game := Game{gameID, string(gameName), []string{}, "", nil, nil, "", true, LegacyID}
 		games[gameID] = &game
 
+		fmt.Printf("\nAttempting to resolve name: %s\n", game.Name)
+		game.Name = resolveName(game.Name)
+		fmt.Printf("Resolved name: %s\n", game.Name)
+
 		tagsText := gameGroups[4]
 		for _, tagGroups := range tagsPattern.FindAllSubmatch(tagsText, -1) {
 			tag := tagGroups[1]
 			game.Tags = append(game.Tags, string(tag))
 		}
 	}
+}
+
+func urlEncode(name string) string {
+	name = strings.ReplaceAll(name, " ", "%20")
+	name = strings.ReplaceAll(name, ":", "%3A")
+	name = strings.ReplaceAll(name, "/", "%2F")
+	name = strings.ReplaceAll(name, "\\", "%5C")
+	name = strings.ReplaceAll(name, "?", "%3F")
+	name = strings.ReplaceAll(name, "*", "%2A")
+	name = strings.ReplaceAll(name, "\"", "%22")
+	name = strings.ReplaceAll(name, "<", "%3C")
+	name = strings.ReplaceAll(name, ">", "%3E")
+	name = strings.ReplaceAll(name, "&", "%26")
+	return name
+}
+
+func resolveName(name string) string {
+	apiURL := fmt.Sprintf("https://igdb.themajorones.dev/api/search?query=%s", urlEncode(name))
+	resp, err := http.Get(apiURL)
+	if err != nil {
+		return name
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return name
+	}
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return name
+	}
+
+	var result struct {
+		Result string `json:"result"`
+	}
+
+	err = json.Unmarshal(body, &result)
+	if err != nil {
+		return name
+	}
+
+	if result.Result != "No data found for the given query" {
+		return result.Result
+	}
+
+	return name
 }
 
 // GetGames returns all games from a given user, using both the public profile and local
